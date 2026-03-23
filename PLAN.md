@@ -127,7 +127,7 @@ h1, h2, h3, h4, h5, h6 {
 
   --ring-outer-stroke: var(--color-amber);
   --ring-inner-stroke: var(--color-green);
-  --ring-fill:         rgba(76, 175, 110, 0.12);
+  --ring-fill:         rgba(76, 175, 110, 0.20);
 }
 ```
 
@@ -412,8 +412,8 @@ export async function createGame({ question, agents: personaIds }) {
     const scores = {}
     for (const agent of agentDescriptors) {
       scores[agent.id] = {
-        social:    45 + Math.random() * 30,
-        planetary: 45 + Math.random() * 30,
+        social:    55 + Math.random() * 25,   // range [55, 80) — ~75% chance per agent of being in-zone
+        planetary: 55 + Math.random() * 25,   // range [55, 80) — makes the habitable zone immediately populated
       }
     }
     const game = {
@@ -668,14 +668,14 @@ center — well inside any inner ring — making the visual misleading.
 The habitable zone is the **top-right quadrant** where social >= 60 AND
 planetary >= 60. Draw it as a filled rectangle:
 
-```svg
-<!-- Habitable zone: social 60–100, planetary 60–100 -->
-<!-- x from 290 to 450, y from 50 to 210 (SVG coordinates) -->
+```jsx
+{/* Habitable zone: social 60–100, planetary 60–100 */}
+{/* x from 290 to 450, y from 50 to 210 (SVG coordinates) */}
 <rect
   x="290" y="50"
   width="160" height="160"
-  fill="rgba(76, 175, 110, 0.12)"
-  class="habitableZoneFill"
+  fill="rgba(76, 175, 110, 0.20)"
+  className={styles.habitableZoneFill}
 />
 ```
 
@@ -711,7 +711,12 @@ const [isPulsing, setIsPulsing] = useState(false)
 const prevBestRef = useRef(null)
 
 useEffect(() => {
-  if (bestScore == null) return
+  if (bestScore == null) {
+    // All agents have left the zone — reset the ref so that the next agent to
+    // enter the zone always triggers a pulse (re-entry is treated as a new best).
+    prevBestRef.current = null
+    return
+  }
   if (bestScore > prevBestRef.current) {
     setIsPulsing(true)
   }
@@ -756,12 +761,12 @@ itself.
 
 The habitable zone `<rect>` uses a fixed fill opacity of 0.20:
 
-```svg
+```jsx
 <rect
   x="290" y="50"
   width="160" height="160"
   fill="rgba(76, 175, 110, 0.20)"
-  class="habitableZoneFill"
+  className={styles.habitableZoneFill}
 />
 ```
 
@@ -870,6 +875,12 @@ export function useGame(id) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Reset to loading state immediately so GameView never shows stale data from
+    // a previous game while the new fetch is in-flight (important during navigation).
+    setGame(null)
+    setAgentScores(null)
+    setIsLoading(true)
+
     let cancelled = false  // cancellation flag guards all setState calls
 
     fetchGame(id).then(g => {
