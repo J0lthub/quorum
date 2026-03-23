@@ -9,15 +9,17 @@ Scope: Dashboard `/`, Persona Selection modal, Habitable Zone ring on `/game/:id
 ## 0. Dependency install (first step before any code)
 
 ```
-npm install --save react-router-dom
+npm install --save react-router-dom nanoid
 ```
 
 The `--save` flag (default in npm 5+ but stated explicitly for clarity) ensures
-`react-router-dom` is written to `dependencies` in `package.json`. Verify after
-install: `package.json` must list it so a fresh `npm install` on a clean checkout
-resolves the package without manual intervention.
+both packages are written to `dependencies` in `package.json`. Verify after
+install: `package.json` must list both so a fresh `npm install` on a clean checkout
+resolves the packages without manual intervention.
 
-No other runtime dependencies. All visuals are SVG/CSS. All data is mocked.
+`nanoid` is required by `createGame` in `src/api/mock.js` to generate collision-safe
+URL-friendly ids for new game objects and their agent descriptors. All other
+dependencies are provided by React + Vite. All visuals are SVG/CSS. All data is mocked.
 
 ---
 
@@ -233,22 +235,222 @@ schema (components must not invent their own field names):
 ```
 
 ```js
-export const MOCK_GAMES = [ /* 4–6 entries using MOCK_GAMES schema above */ ]
-export const MOCK_RECENT = [ /* 5 entries using MOCK_RECENT schema above */ ]
-export const MOCK_LEADERBOARD = [ /* 10 entries using MOCK_LEADERBOARD schema above */ ]
+export const MOCK_GAMES = [
+  {
+    id: 'g-001',
+    question: 'What is the best way to reduce carbon emissions in NYC?',
+    agents: [
+      { id: 'a-001', personaId: 'scientist',        branch: 'agent/scientist-01',        iteration: 0 },
+      { id: 'a-002', personaId: 'engineer',          branch: 'agent/engineer-01',          iteration: 0 },
+      { id: 'a-003', personaId: 'planetary_bounds',  branch: 'agent/planetary_bounds-01',  iteration: 0 },
+    ],
+    scores: {
+      'a-001': { social: 72, planetary: 81 },
+      'a-002': { social: 68, planetary: 74 },
+      'a-003': { social: 61, planetary: 92 },
+    },
+    status: 'active',
+    startedAt: '2026-03-23T10:14:00Z',
+  },
+  {
+    id: 'g-002',
+    question: 'How can universal basic income reshape care work in high-income countries?',
+    agents: [
+      { id: 'a-004', personaId: 'care_economy',   branch: 'agent/care_economy-01',   iteration: 0 },
+      { id: 'a-005', personaId: 'equity_analyst',  branch: 'agent/equity_analyst-01',  iteration: 0 },
+      { id: 'a-006', personaId: 'degrowth',        branch: 'agent/degrowth-01',        iteration: 0 },
+      { id: 'a-007', personaId: 'mathematician',   branch: 'agent/mathematician-01',   iteration: 0 },
+    ],
+    scores: {
+      'a-004': { social: 84, planetary: 63 },
+      'a-005': { social: 79, planetary: 58 },
+      'a-006': { social: 55, planetary: 71 },
+      'a-007': { social: 66, planetary: 69 },
+    },
+    status: 'active',
+    startedAt: '2026-03-23T09:02:00Z',
+  },
+  {
+    id: 'g-003',
+    question: 'Can regenerative agriculture feed Europe without synthetic fertilizers by 2040?',
+    agents: [
+      { id: 'a-008', personaId: 'regenerative_econ', branch: 'agent/regenerative_econ-01', iteration: 0 },
+      { id: 'a-009', personaId: 'indigenous',         branch: 'agent/indigenous-01',         iteration: 0 },
+      { id: 'a-010', personaId: 'journalist',         branch: 'agent/journalist-01',         iteration: 0 },
+    ],
+    scores: {
+      'a-008': { social: 77, planetary: 88 },
+      'a-009': { social: 70, planetary: 82 },
+      'a-010': { social: 65, planetary: 60 },
+    },
+    status: 'active',
+    startedAt: '2026-03-23T08:45:00Z',
+  },
+  {
+    id: 'g-004',
+    question: 'What urban design interventions most effectively reduce heat-island effect?',
+    agents: [
+      { id: 'a-011', personaId: 'urban_ecologist',      branch: 'agent/urban_ecologist-01',      iteration: 0 },
+      { id: 'a-012', personaId: 'industrial_designer',  branch: 'agent/industrial_designer-01',  iteration: 0 },
+      { id: 'a-013', personaId: 'commons_steward',      branch: 'agent/commons_steward-01',      iteration: 0 },
+    ],
+    scores: {
+      'a-011': { social: 80, planetary: 85 },
+      'a-012': { social: 74, planetary: 78 },
+      'a-013': { social: 62, planetary: 70 },
+    },
+    status: 'active',
+    startedAt: '2026-03-23T07:30:00Z',
+  },
+  {
+    id: 'g-005',
+    question: 'How should cities price road access to cut congestion and fund transit equitably?',
+    agents: [
+      { id: 'a-014', personaId: 'equity_analyst',  branch: 'agent/equity_analyst-01',  iteration: 0 },
+      { id: 'a-015', personaId: 'engineer',         branch: 'agent/engineer-01',         iteration: 0 },
+      { id: 'a-016', personaId: 'commons_steward',  branch: 'agent/commons_steward-01',  iteration: 0 },
+    ],
+    scores: {
+      'a-014': { social: 88, planetary: 66 },
+      'a-015': { social: 71, planetary: 73 },
+      'a-016': { social: 57, planetary: 64 },
+    },
+    status: 'active',
+    startedAt: '2026-03-23T06:55:00Z',
+  },
+]
+
+export const MOCK_RECENT = [
+  {
+    id: 'r-001',
+    question: 'How can urban transit reduce car dependency by 2035?',
+    winningPersona: 'urban_ecologist',
+    habitableScore: 78.5,
+    commitHash: 'a3f9c12',
+    diffUrl: '#',
+  },
+  {
+    id: 'r-002',
+    question: 'Can doughnut economics replace GDP as a policy target?',
+    winningPersona: 'regenerative_econ',
+    habitableScore: 91.0,
+    commitHash: 'b7d2e45',
+    diffUrl: '#',
+  },
+  {
+    id: 'r-003',
+    question: 'What role should land value tax play in affordable housing policy?',
+    winningPersona: 'commons_steward',
+    habitableScore: 74.2,
+    commitHash: 'c1e8f03',
+    diffUrl: '#',
+  },
+  {
+    id: 'r-004',
+    question: 'How do we close the global digital divide without deepening extraction?',
+    winningPersona: 'equity_analyst',
+    habitableScore: 82.7,
+    commitHash: 'd4a6b19',
+    diffUrl: '#',
+  },
+  {
+    id: 'r-005',
+    question: 'Is a four-day work week compatible with planetary boundaries?',
+    winningPersona: 'degrowth',
+    habitableScore: 69.4,
+    commitHash: 'e9c3d77',
+    diffUrl: '#',
+  },
+]
+
+export const MOCK_LEADERBOARD = [
+  { rank: 1,  username: 'ecotopia42',    bestScore: 91.0, winningPersona: 'regenerative_econ', question: 'Can doughnut economics replace GDP as a policy target?',                     dataset: 'ONS-2024',       date: '2026-03-20', commitHash: 'b7d2e45' },
+  { rank: 2,  username: 'kaiawhenuā',    bestScore: 88.3, winningPersona: 'indigenous',         question: 'Can regenerative agriculture feed Europe without synthetic fertilizers?',    dataset: 'FAOSTAT-2024',   date: '2026-03-21', commitHash: 'f2a1c88' },
+  { rank: 3,  username: 'loop_logic',    bestScore: 86.1, winningPersona: 'urban_ecologist',    question: 'What urban design interventions reduce heat-island effect most?',            dataset: 'C40-Cities-23',  date: '2026-03-19', commitHash: '3d7e021' },
+  { rank: 4,  username: 'thrivelab',     bestScore: 84.5, winningPersona: 'care_economy',       question: 'How can universal basic income reshape care work in high-income countries?', dataset: 'ILO-2023',       date: '2026-03-18', commitHash: '9b5f44a' },
+  { rank: 5,  username: 'marginalcost',  bestScore: 82.7, winningPersona: 'equity_analyst',     question: 'How do we close the global digital divide without deepening extraction?',    dataset: 'ITU-2024',       date: '2026-03-22', commitHash: 'd4a6b19' },
+  { rank: 6,  username: 'steadystate',   bestScore: 80.9, winningPersona: 'degrowth',           question: 'Is a four-day work week compatible with planetary boundaries?',             dataset: 'Eurostat-2024',  date: '2026-03-17', commitHash: '6c0d953' },
+  { rank: 7,  username: 'solarfutures',  bestScore: 79.3, winningPersona: 'planetary_bounds',   question: 'What is the best way to reduce carbon emissions in NYC?',                   dataset: 'EPA-2024',       date: '2026-03-16', commitHash: '1e8ba70' },
+  { rank: 8,  username: 'commonwealt_h', bestScore: 77.6, winningPersona: 'commons_steward',    question: 'What role should land value tax play in affordable housing policy?',         dataset: 'ONS-2024',       date: '2026-03-15', commitHash: 'c1e8f03' },
+  { rank: 9,  username: 'datadonut',     bestScore: 74.8, winningPersona: 'scientist',          question: 'Can biodiversity offsetting actually protect ecosystems long-term?',         dataset: 'IUCN-2024',      date: '2026-03-14', commitHash: '7f3c19d' },
+  { rank: 10, username: 'boundarywork',  bestScore: 71.2, winningPersona: 'journalist',         question: 'How should cities price road access to cut congestion equitably?',           dataset: 'TfL-Open-2024',  date: '2026-03-13', commitHash: '4a9e826' },
+]
+
 export const MOCK_LIVE_STATS = { activeAgents: 47, totalCommits: 12843, datasets: 31 }
-```
 ```
 
 ### 3c. Async helpers (simulated network)
 
 ```js
 export async function fetchGames()       // resolves MOCK_GAMES after 120ms
-export async function fetchGame(id)      // resolves single game
+export async function fetchGame(id)      // resolves single game — see lookup order below
 export async function fetchLeaderboard() // resolves MOCK_LEADERBOARD
 export async function fetchLiveStats()   // resolves MOCK_LIVE_STATS + small random delta
-export async function createGame(payload) // resolves new game object with generated id
+export async function createGame(payload) // transforms input, stores result, resolves new game
 ```
+
+**`createGame` input/output transformation (full specification):**
+
+The persona modal calls `createGame({ question, agents: selected })` where
+`selected` is an array of persona id strings (e.g. `['scientist', 'engineer']`).
+`createGame` must transform this into a full game object before resolving:
+
+```js
+import { nanoid } from 'nanoid'   // add nanoid to dependencies: npm install nanoid
+
+const LIVE_GAMES = new Map()       // module-level mutable store for in-progress games
+
+export async function createGame({ question, agents: personaIds }) {
+  return new Promise(resolve => setTimeout(() => {
+    const gameId = nanoid()
+    const agentDescriptors = personaIds.map(personaId => ({
+      id:        nanoid(),
+      personaId,
+      branch:    `agent/${personaId}-01`,
+      iteration: 0,
+    }))
+    const scores = {}
+    for (const agent of agentDescriptors) {
+      scores[agent.id] = {
+        social:    45 + Math.random() * 30,
+        planetary: 45 + Math.random() * 30,
+      }
+    }
+    const game = {
+      id:        gameId,
+      question,
+      agents:    agentDescriptors,
+      scores,
+      status:    'active',
+      startedAt: new Date().toISOString(),
+    }
+    LIVE_GAMES.set(gameId, game)
+    resolve(game)
+  }, 120))
+}
+```
+
+**`fetchGame` lookup order:** check `LIVE_GAMES` first (games created in the
+current session), then fall back to `MOCK_GAMES`. This ensures that a game
+created via the modal is immediately fetchable by `useGame(id)` after navigation:
+
+```js
+export async function fetchGame(id) {
+  return new Promise(resolve => setTimeout(() => {
+    if (LIVE_GAMES.has(id)) {
+      resolve(LIVE_GAMES.get(id))
+    } else {
+      resolve(MOCK_GAMES.find(g => g.id === id) ?? null)
+    }
+  }, 120))
+}
+```
+
+**`nanoid` dependency:** add it alongside `react-router-dom` in step 1 of the
+implementation order: `npm install react-router-dom nanoid`. `nanoid` generates
+URL-safe unique ids (21 chars by default) with no collision risk in a prototype
+context. Do not use `Math.random()` for ids — it produces non-unique values
+under concurrent calls.
 
 ---
 
@@ -280,9 +482,11 @@ scoring pipeline is added later, `computeSocialScore(metrics)` and
 
 ## 5. Routing (`src/main.jsx` + `src/App.jsx`)
 
-Both `main.jsx` and `App.jsx` must be **fully replaced**. The Vite scaffold imports
-assets like `./assets/react.svg` that cause immediate module-not-found errors in
-Vite. Write both files from scratch; do not attempt to edit around the scaffold.
+Both `main.jsx` and `App.jsx` must be **fully replaced**. The Vite scaffold
+`App.jsx` renders the default Vite welcome page which must be replaced wholesale —
+the content (counter demo, Vite/React logos, boilerplate copy) is entirely
+incompatible with the new app. Write both files from scratch; do not attempt to
+edit around the scaffold.
 
 `main.jsx` — FULL FILE CONTENT (nothing from scaffold survives):
 
@@ -321,10 +525,10 @@ export default function App() {
 
 **Why both files must be fully replaced:** The Vite scaffold `main.jsx` does not
 wrap the app in `<BrowserRouter>`, causing React Router to throw "You cannot render
-a `<Route>` outside a `<Router>`" immediately on load. The scaffold `App.jsx` imports
-non-existent assets (`./assets/react.svg`, etc.) that cause Vite module-not-found
-errors before any new code runs. Neither file can be safely edited in-place — write
-both from scratch.
+a `<Route>` outside a `<Router>`" immediately on load. The scaffold `App.jsx`
+renders the default Vite welcome page — a counter demo with Vite/React logos and
+boilerplate copy — which is entirely incompatible with the new app structure.
+Neither file can be safely edited in-place; write both from scratch.
 
 ---
 
@@ -496,18 +700,22 @@ Each agent is a colored `<circle r="8">` at the coordinates from §9a.
 Point has a `<title>` for hover tooltip (native SVG). A larger translucent halo
 circle `r="14"` behind it at 40% opacity.
 
-### 9e. Pulse animation on new best
+### 9e. Pulse animation on new in-zone best
 
-When `bestScore` changes (tracked by a `useEffect` inside `HabitableZoneRing`),
-toggle a React state boolean `isPulsing` to `true`. Apply the CSS class conditionally
-via `className`:
+When `bestScore` improves (i.e. the new value is strictly greater than the
+previous value), toggle a React state boolean `isPulsing` to `true`. Track the
+previous value with a ref so improvements can be distinguished from decreases:
 
 ```jsx
 const [isPulsing, setIsPulsing] = useState(false)
+const prevBestRef = useRef(null)
 
 useEffect(() => {
   if (bestScore == null) return
-  setIsPulsing(true)
+  if (bestScore > prevBestRef.current) {
+    setIsPulsing(true)
+  }
+  prevBestRef.current = bestScore
 }, [bestScore])
 
 // In JSX:
@@ -518,13 +726,20 @@ useEffect(() => {
 />
 ```
 
+The check `bestScore > prevBestRef.current` ensures the pulse fires only when
+the score genuinely improves. When `prevBestRef.current` is `null` (first in-zone
+agent) the comparison `bestScore > null` evaluates to `true` in JS (null coerces
+to 0), which is the correct behaviour — the first in-zone result is itself a
+new best. The ref is updated after the check so it always reflects the last
+rendered best.
+
 The CSS module defines the keyframe and applies it when `ringPulse` is present:
 
 ```css
 @keyframes ring-pulse {
-  0%   { opacity: 0.12; }
-  40%  { opacity: 0.40; }
-  100% { opacity: 0.12; }
+  0%   { opacity: 0.20; }
+  40%  { opacity: 0.50; }
+  100% { opacity: 0.20; }
 }
 
 .ringPulse {
@@ -533,14 +748,29 @@ The CSS module defines the keyframe and applies it when `ringPulse` is present:
 ```
 
 `onAnimationEnd` resets `isPulsing` to `false`, removing the class so the animation
-can re-trigger on the next `bestScore` change. This approach avoids imperative DOM
-manipulation (`classList.add/remove`) and requires no `useRef` on the SVG element.
+can re-trigger on the next improvement. This approach avoids imperative DOM
+manipulation (`classList.add/remove`) and requires no `useRef` on the SVG element
+itself.
 
-### 9f. Zone expansion representation
+### 9f. Zone fill — fixed opacity
 
-The habitable zone fill opacity scales with best score. At score 60 (minimum)
-opacity is 0.10; at score 100 opacity is 0.35. Continuous CSS variable update,
-not an animation.
+The habitable zone `<rect>` uses a fixed fill opacity of 0.20:
+
+```svg
+<rect
+  x="290" y="50"
+  width="160" height="160"
+  fill="rgba(76, 175, 110, 0.20)"
+  class="habitableZoneFill"
+/>
+```
+
+Do **not** scale opacity dynamically with `bestScore`. Dynamic opacity via a
+`style` prop conflicts with the `ring-pulse` keyframe (§9e), which also controls
+opacity — the `style` prop value overrides the animated value mid-animation,
+breaking the pulse visual. The zone's spatial extent already communicates its
+meaning; the threshold lines (§9b) make the 60/60 boundary explicit. Opacity
+scaling is redundant and causes the animation conflict described above.
 
 ---
 
@@ -591,22 +821,36 @@ export function useLiveStats() {
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
-    fetchLiveStats().then(setStats)
+    let cancelled = false   // guards the initial async fetch against stale resolution
+
+    fetchLiveStats().then(data => {
+      if (!cancelled) setStats(data)
+    })
 
     const id = setInterval(() => {
-      fetchLiveStats().then(setStats)
+      fetchLiveStats().then(data => {
+        if (!cancelled) setStats(data)
+      })
     }, 5000)
 
-    return () => clearInterval(id)   // REQUIRED: prevents double-interval in StrictMode
+    return () => {
+      cancelled = true     // prevents any in-flight promise from writing into stale state
+      clearInterval(id)    // REQUIRED: prevents double-interval in StrictMode
+    }
   }, [])
 
   return stats
 }
 ```
 
-The `return () => clearInterval(id)` cleanup is mandatory. React StrictMode
-double-mounts components in development; without the cleanup, two intervals run
-concurrently, doubling the update rate and causing stale-closure bugs.
+Both the `cancelled` flag and `clearInterval(id)` are required:
+- `clearInterval(id)` prevents interval ticks after cleanup, which is the primary
+  guard for the repeated poll path.
+- `cancelled = true` guards the **initial** `fetchLiveStats()` promise, which
+  can resolve after the component unmounts (or is re-mounted by StrictMode). If
+  that promise resolved and called `setStats` after unmount, React would log a
+  state-update-on-unmounted-component warning. The `if (!cancelled)` check inside
+  each `.then` makes both the initial fetch and interval fetches safe.
 
 ### 12b. `useGame` — interval cleanup + local score copy
 
@@ -700,14 +944,14 @@ Key invariants enforced here:
 
 ## 13. Implementation Order (sequential, each is a shippable increment)
 
-1. **Install deps** — `npm install --save react-router-dom`; verify `package.json`
-   lists it under `dependencies`
+1. **Install deps** — `npm install --save react-router-dom nanoid`; verify `package.json`
+   lists both under `dependencies`
 2. **Wipe scaffold** — delete `src/App.css`; replace `src/index.css` wholesale with
    the full reset + token CSS from §2; **FULLY REPLACE `src/App.jsx`** with the
-   routing skeleton below — do not merely delete boilerplate, because the Vite
-   scaffold's `App.jsx` imports `./assets/react.svg` (and possibly `./assets/hero.png`
-   or other non-existent assets) which will cause a Vite module-not-found error before
-   any new code runs. Nothing from the original scaffold file should survive:
+   routing skeleton below — do not merely edit the boilerplate, because the Vite
+   scaffold `App.jsx` renders the default Vite welcome page (counter demo, Vite/React
+   logos, boilerplate copy) which is entirely incompatible with the new app structure.
+   Nothing from the original scaffold file should survive:
 
    ```jsx
    // src/App.jsx — complete replacement, no scaffold lines survive
@@ -785,7 +1029,7 @@ Key invariants enforced here:
 | `npm install --save react-router-dom` | Explicit save ensures `package.json` is updated for fresh installs |
 | Full CSS reset including `#root` and `h1`/`h2` | Vite scaffold injects opinionated styles that collide with CSS Modules |
 | Google Fonts `<link>` before `</head>` (not before a CSS link) | Vite's `index.html` has no `<link rel="stylesheet">` for `index.css` — CSS is injected by the module script; inserting before `</head>` is the correct anchor |
-| Full replacement of `App.jsx` (not edit/wipe) | Vite scaffold imports non-existent assets (`./assets/react.svg`, etc.) that cause immediate module-not-found errors; a fresh write is the only safe approach |
+| Full replacement of `App.jsx` (not edit/wipe) | The scaffold `App.jsx` renders the default Vite welcome page which is entirely incompatible with the new app — a fresh write is the only safe approach |
 | Explicit field schemas for MOCK_GAMES, MOCK_RECENT, MOCK_LEADERBOARD | Without canonical field names, each component invents its own, making the "clean Dolt swap-in" goal impossible |
 | Cartesian X/Y axes for Habitable Zone (not concentric rings) | Concentric ring geometry does not map correctly to the social/planetary score thresholds; a point at exactly score=60 on both axes would fall far inside the inner ring (r=110) rather than on its boundary |
 | `clearInterval` + `cancelled` flag in `useGame` `useEffect` | `cancelled` guards only the async `fetchGame` promise path — a stale promise can resolve after unmount and overwrite state in the new instance. `clearInterval` alone prevents interval ticks after cleanup; no `cancelled` check is needed inside the interval callback |
@@ -803,4 +1047,4 @@ Key invariants enforced here:
 
 ---
 
-*Plan written 2026-03-23. Revised 2026-03-23 (pass 1) to address: explicit --save for react-router-dom, full CSS reset for Vite scaffold teardown, Cartesian axis approach for HabitableZoneRing (replacing incorrect concentric ring coordinate math), clearInterval cleanup in useLiveStats and useGame, deepCopy local score state in useGame to avoid mutating MOCK_GAMES, and Google Fonts link step in implementation order. Revised 2026-03-23 (pass 2) to address: (1) stale async fetch in useGame — added `let cancelled = false` flag guarding all setState calls and returned `() => { cancelled = true; clearInterval(id_interval) }` from effect; (2) explicit field schemas for MOCK_GAMES, MOCK_RECENT, and MOCK_LEADERBOARD replacing empty stubs; (3) bestScore now ignores out-of-zone agents — only agents where social >= 60 AND planetary >= 60 are included, result is null when no agent is in-zone; (4) Google Fonts insertion anchor corrected to before `</head>` (Vite has no `<link rel="stylesheet">` for index.css in index.html); (5) App.jsx wipe instruction changed to full replacement with complete file content to avoid Vite module-not-found errors from scaffold asset imports. Revised 2026-03-23 (pass 3) to address: (1) main.jsx never got BrowserRouter — added full main.jsx replacement content to §5 and §13 step 4 with StrictMode+BrowserRouter wrapping App; (2) removed dead computeSocialScore/computePlanetaryScore from §4 — prototype uses pre-computed mock scores perturbed directly, no metrics layer needed; (3) HabitableZoneRing pulse animation now uses isPulsing state boolean + onAnimationEnd (removed imperative classList approach that had no useRef); (4) Inter added to Google Fonts link (single combined stylesheet URL) — Inter is not a system font and must be loaded explicitly; (5) cancelled flag comment corrected — it guards only stale fetchGame promises, not interval ticks (clearInterval makes that check dead code). Covers all spec sections 01–07 within prototype scope.*
+*Plan written 2026-03-23. Revised 2026-03-23 (pass 1) to address: explicit --save for react-router-dom, full CSS reset for Vite scaffold teardown, Cartesian axis approach for HabitableZoneRing (replacing incorrect concentric ring coordinate math), clearInterval cleanup in useLiveStats and useGame, deepCopy local score state in useGame to avoid mutating MOCK_GAMES, and Google Fonts link step in implementation order. Revised 2026-03-23 (pass 2) to address: (1) stale async fetch in useGame — added `let cancelled = false` flag guarding all setState calls and returned `() => { cancelled = true; clearInterval(id_interval) }` from effect; (2) explicit field schemas for MOCK_GAMES, MOCK_RECENT, and MOCK_LEADERBOARD replacing empty stubs; (3) bestScore now ignores out-of-zone agents — only agents where social >= 60 AND planetary >= 60 are included, result is null when no agent is in-zone; (4) Google Fonts insertion anchor corrected to before `</head>` (Vite has no `<link rel="stylesheet">` for index.css in index.html); (5) App.jsx wipe instruction changed to full replacement with complete file content to avoid Vite module-not-found errors from scaffold asset imports. Revised 2026-03-23 (pass 3) to address: (1) main.jsx never got BrowserRouter — added full main.jsx replacement content to §5 and §13 step 4 with StrictMode+BrowserRouter wrapping App; (2) removed dead computeSocialScore/computePlanetaryScore from §4 — prototype uses pre-computed mock scores perturbed directly, no metrics layer needed; (3) HabitableZoneRing pulse animation now uses isPulsing state boolean + onAnimationEnd (removed imperative classList approach that had no useRef); (4) Inter added to Google Fonts link (single combined stylesheet URL) — Inter is not a system font and must be loaded explicitly; (5) cancelled flag comment corrected — it guards only stale fetchGame promises, not interval ticks (clearInterval makes that check dead code). Revised 2026-03-23 (pass 4) to address: (1) MOCK_GAMES, MOCK_RECENT, and MOCK_LEADERBOARD replaced with complete concrete entries (4–6 games, 5 recent results, 10 leaderboard rows) using all required schema fields and realistic varied data; (2) HabitableZoneRing §9e pulse animation now fires only on improvements — added prevBestRef = useRef(null) and guards setIsPulsing(true) behind `bestScore > prevBestRef.current`, ref updated after check; (3) §9f dynamic opacity scaling removed entirely — fill fixed at rgba(76,175,110,0.20) to avoid conflict with ring-pulse keyframe which also controls opacity; (4) §3c createGame fully specified — maps persona id strings to agent descriptors with nanoid ids, initialises scores, stores in module-level LIVE_GAMES Map, fetchGame checks LIVE_GAMES before MOCK_GAMES; nanoid added to §0 install command and §13 step 1; (5) useLiveStats §12a now has cancelled flag guarding initial fetchLiveStats().then() with `if (!cancelled) setStats(data)`, cleanup returns `() => { cancelled = true; clearInterval(id) }`; (6) false claim about non-existent assets causing module-not-found errors removed from §5, §13 step 2, and §16 key decisions table — justification now accurately states the scaffold App.jsx renders the incompatible Vite welcome page. Covers all spec sections 01–07 within prototype scope.*
