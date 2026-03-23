@@ -1,0 +1,55 @@
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.axisLine {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.thresholdLine {
+  stroke: var(--color-amber);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+}
+
+.habitableZoneFill {
+  /* base opacity via fill attribute */
+}
+
+@keyframes ring-pulse {
+  0%   { opacity: 0.20; }
+  40%  { opacity: 0.50; }
+  100% { opacity: 0.20; }
+}
+
+.ringPulse {
+  animation: ring-pulse 1.2s ease-out forwards;
+}
+
+.inZoneLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--color-green);
+  opacity: 0.4;
+  letter-spacing: 0.15em;
+}
+
+.axisLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--color-muted);
+}
+
+.tickLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: var(--color-muted);
+}
+
+.agentHalo {
+  opacity: 0.4;
+}

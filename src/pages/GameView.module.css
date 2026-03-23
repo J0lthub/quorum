@@ -1,0 +1,110 @@
+.page {
+  min-height: 100vh;
+  padding-top: 52px;
+}
+
+.inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.question {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.45;
+  flex: 1;
+  min-width: 0;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.statusBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.statusBadge.active {
+  background: var(--color-green-dim);
+  color: var(--color-green);
+}
+
+.statusBadge.complete {
+  background: var(--bg-elevated);
+  color: var(--color-muted);
+}
+
+.elapsed {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.backLink {
+  font-size: 13px;
+  color: var(--color-amber);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ringCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.loading {
+  text-align: center;
+  padding: 80px 24px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.notFound {
+  text-align: center;
+  padding: 80px 24px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-muted);
+}

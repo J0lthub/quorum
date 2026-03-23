@@ -1,0 +1,34 @@
+.page {
+  min-height: 100vh;
+  padding-top: 52px; /* topbar height */
+}
+
+.inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "question sidebar"
+    "games    sidebar"
+    "recent   sidebar";
+  gap: 20px;
+}
+
+@media (max-width: 1100px) {
+  .inner {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "question"
+      "games"
+      "recent"
+      "sidebar";
+  }
+}
+
+.questionArea { grid-area: question; }
+.gamesArea    { grid-area: games; }
+.recentArea   { grid-area: recent; }
+.sidebarArea  { grid-area: sidebar; }
