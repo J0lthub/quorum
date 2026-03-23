@@ -9,8 +9,13 @@ Scope: Dashboard `/`, Persona Selection modal, Habitable Zone ring on `/game/:id
 ## 0. Dependency install (first step before any code)
 
 ```
-npm install react-router-dom
+npm install --save react-router-dom
 ```
+
+The `--save` flag (default in npm 5+ but stated explicitly for clarity) ensures
+`react-router-dom` is written to `dependencies` in `package.json`. Verify after
+install: `package.json` must list it so a fresh `npm install` on a clean checkout
+resolves the package without manual intervention.
 
 No other runtime dependencies. All visuals are SVG/CSS. All data is mocked.
 
@@ -50,7 +55,7 @@ src/
       PersonaModal.jsx            # modal shell + 2–5 selection logic
       PersonaCard.jsx             # single selectable persona card
     game/
-      HabitableZoneRing.jsx       # SVG concentric ring + agent points + axes
+      HabitableZoneRing.jsx       # SVG Cartesian plot + agent points + threshold lines
       AgentPointLegend.jsx        # colored legend for active agents
       ScorePanel.jsx              # numeric score breakdown per agent
 ```
@@ -59,10 +64,49 @@ src/
 
 ## 2. Design Tokens (`src/index.css`)
 
+**Important:** Before writing the new token content, delete the following scaffold
+files entirely: `src/App.css`. Also wipe `src/index.css` and replace it wholesale
+with the content below. The Vite scaffold places opinionated styles on `#root`
+(including `width: 1126px`, `text-align: center`, and flex layout) and on `h1`/`h2`
+elements. The full reset block below neutralizes all of those.
+
 All color, spacing, and typography in CSS custom properties on `:root`. No values
 hard-coded inside component files.
 
 ```css
+/* === Full CSS reset — must come before all other rules === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-base);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* Neutralize Vite scaffold #root styles */
+#root {
+  width: 100%;
+  max-width: 100%;
+  text-align: left;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+/* Reset heading sizes so CSS Modules control them */
+h1, h2, h3, h4, h5, h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+/* === Design tokens === */
 :root {
   --bg-base:       #0d0f0e;
   --bg-surface:    #141714;
@@ -85,7 +129,20 @@ hard-coded inside component files.
 }
 ```
 
-Load JetBrains Mono via a `<link>` in `index.html` from Google Fonts.
+### 2a. Google Fonts — add to `index.html`
+
+Add the following `<link>` tags inside `<head>` of `index.html` **before** the
+`<link rel="stylesheet" href="/src/index.css" />` entry so the font is available
+when the CSS custom property `--font-mono` is first used:
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+```
 
 ---
 
@@ -299,51 +356,71 @@ On "Start Game": call `createGame({ question, agents: selected })`, navigate to
 
 Pure SVG, no canvas, no charting library. Responsive via `viewBox`.
 
-### 9a. Coordinate system
+### 9a. Coordinate system — Cartesian X/Y axis approach
 
-`viewBox="0 0 500 500"`, center at (250, 250).
+`viewBox="0 0 500 500"`, with the plot area running from (50,450) at the origin to
+(450,50) at the top-right corner. This maps the two independent score dimensions
+onto perpendicular axes:
 
-Two concentric rings:
-- Outer ring: radius 200px — planetary ceiling boundary (amber stroke, dashed)
-- Inner ring: radius 110px — social floor boundary (green stroke, dashed)
-- Filled annular zone between them: `<path>` or `<circle>` clip trick
+- **X axis (horizontal):** Social Score, 0 → 100, left to right
+- **Y axis (vertical):** Planetary Score, 0 → 100, bottom to top (SVG inverted)
 
-SVG annulus (the habitable zone fill):
-```svg
-<!-- outer circle clip path then fill -->
-<defs>
-  <mask id="annulus-mask">
-    <circle cx="250" cy="250" r="200" fill="white"/>
-    <circle cx="250" cy="250" r="110" fill="black"/>
-  </mask>
-</defs>
-<circle cx="250" cy="250" r="200" fill="var(--ring-fill)" mask="url(#annulus-mask)"/>
-```
-
-### 9b. Axes
-
-Two faint lines through center at 45° rotation — actually the spec calls for X (social)
-and Y (planetary) axes. Draw them as SVG `<line>` elements:
-
-- Horizontal axis: (50, 250)→(450, 250), label "Social Score →" at right end
-- Vertical axis: (250, 450)→(250, 50), label "↑ Planetary Score" at top
-- Quadrant labels (faint, monospace): "IN ZONE" top-right, axis tick marks at 0/50/100
-
-### 9c. Agent points
-
-Each agent is a colored `<circle r="8">` plotted at:
+Agent point coordinates:
 ```
 x = 50 + (socialScore / 100) * 400
 y = 450 - (planetaryScore / 100) * 400
 ```
 
-Point has a `<title>` for hover tooltip (native SVG). A larger translucent halo circle
-`r="14"` behind it at 40% opacity.
+This ensures that an agent with `social=60, planetary=60` (the exact zone boundary
+per `isInZone`) plots at `x = 290, y = 210` — correctly sitting on the threshold
+corner of the habitable quadrant.
 
-### 9d. Pulse animation on new best
+**Do not use concentric rings to encode score thresholds.** The annulus geometry
+(outer r=200, inner r=110) does not correspond to the zone boundaries in Cartesian
+score space: a point at social=60, planetary=60 would plot ~57px from the SVG
+center — well inside any inner ring — making the visual misleading.
+
+### 9b. Habitable zone shading
+
+The habitable zone is the **top-right quadrant** where social >= 60 AND
+planetary >= 60. Draw it as a filled rectangle:
+
+```svg
+<!-- Habitable zone: social 60–100, planetary 60–100 -->
+<!-- x from 290 to 450, y from 50 to 210 (SVG coordinates) -->
+<rect
+  x="290" y="50"
+  width="160" height="160"
+  fill="rgba(76, 175, 110, 0.12)"
+  class="habitableZoneFill"
+/>
+```
+
+Draw threshold lines (dashed) at the zone boundaries:
+- Vertical line at x=290 (social score = 60): amber dashed stroke
+- Horizontal line at y=210 (planetary score = 60): amber dashed stroke
+
+These lines visually define the zone without misrepresenting which agents are inside.
+
+### 9c. Axes
+
+Draw axes as SVG `<line>` elements:
+
+- Horizontal axis: (50, 450)→(450, 450), label "Social Score →" at right end
+- Vertical axis: (50, 450)→(50, 50), label "↑ Planetary Score" at top
+- Tick marks at score values 0, 20, 40, 60, 80, 100 on each axis
+- Quadrant label (faint, monospace): "IN ZONE" centered in the habitable rectangle
+
+### 9d. Agent points
+
+Each agent is a colored `<circle r="8">` at the coordinates from §9a.
+Point has a `<title>` for hover tooltip (native SVG). A larger translucent halo
+circle `r="14"` behind it at 40% opacity.
+
+### 9e. Pulse animation on new best
 
 When `bestScore` changes (useEffect watching it), add CSS class `.ring-pulse` to the
-annulus fill element. The class runs a 1.2s keyframe:
+habitable zone fill rectangle. The class runs a 1.2s keyframe:
 ```css
 @keyframes ring-pulse {
   0%   { opacity: 0.12; }
@@ -352,15 +429,13 @@ annulus fill element. The class runs a 1.2s keyframe:
 }
 ```
 
-Remove the class after animation ends via `animationend` event listener. This is the
-only animation in the file — keep it targeted.
+Remove the class after animation ends via `animationend` event listener.
 
-### 9e. Zone expansion representation
+### 9f. Zone expansion representation
 
-Rather than literally resizing the rings (the spec says "bigger ring = better outcome"),
-implement it as: the habitable zone fill opacity scales with best score. At score 60
-(minimum) opacity is 0.10; at score 100 opacity is 0.35. This is a continuous CSS
-variable update, not an animation.
+The habitable zone fill opacity scales with best score. At score 60 (minimum)
+opacity is 0.10; at score 100 opacity is 0.35. Continuous CSS variable update,
+not an animation.
 
 ---
 
@@ -381,7 +456,7 @@ Header above the two-column area: question text (full), status badge, elapsed ti
 
 `useGame(id)` hook:
 - Fetches mock game by id on mount
-- Sets up `setInterval(2000)` that mutates agent scores by ±2 per tick (simulating
+- Sets up `setInterval(2000)` that updates agent scores by ±2 per tick (simulating
   agent progress), re-renders ring
 - Returns `{ game, agentScores, bestScore, isLoading }`
 
@@ -399,33 +474,127 @@ Show "BEST" badge next to that agent's name.
 
 ---
 
-## 12. Implementation Order (sequential, each is a shippable increment)
+## 12. Hook Implementation Details
 
-1. **Install deps + wipe scaffold** — `npm install react-router-dom`, delete boilerplate
-   from `App.jsx`, `App.css`, `index.css`; replace with design token CSS
-2. **Routing skeleton** — `main.jsx` with `BrowserRouter`, `App.jsx` with two routes,
-   stub `Dashboard` and `GameView` pages that render `<h1>` placeholders
-3. **Mock API layer** — `src/api/mock.js` with all data + async helpers
-4. **TopBar** — fixed header with live stats via `useLiveStats` hook
-5. **Dashboard layout** — CSS grid shell with three named areas, no content yet
-6. **QuestionInput** — auto-grow textarea, submit handler opens modal (modal stub)
-7. **ActiveGamesGrid + GameCard** — fetch mock games, render grid
-8. **RecentResults** — horizontal strip from mock data
-9. **LeaderboardSidebar** — ordered list from mock data
-10. **PersonaCard** — single card component, selection state
-11. **PersonaModal** — full modal with all 13 personas, 2–5 constraint, team preview,
-    "Start Game" integration
-12. **HabitableZoneRing** — SVG component, static first (hardcoded test scores)
-13. **useGame hook + GameView wiring** — live score simulation, ring reacts to state
-14. **ScorePanel + AgentPointLegend** — complete the game view
-15. **Pulse animation** — add `ring-pulse` keyframe and trigger logic
-16. **Polish pass** — monospace font, hover states, loading shimmer, responsive CSS
+### 12a. `useLiveStats` — interval cleanup
+
+```js
+import { useState, useEffect } from 'react'
+import { fetchLiveStats } from '../api/mock'
+
+export function useLiveStats() {
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    fetchLiveStats().then(setStats)
+
+    const id = setInterval(() => {
+      fetchLiveStats().then(setStats)
+    }, 5000)
+
+    return () => clearInterval(id)   // REQUIRED: prevents double-interval in StrictMode
+  }, [])
+
+  return stats
+}
+```
+
+The `return () => clearInterval(id)` cleanup is mandatory. React StrictMode
+double-mounts components in development; without the cleanup, two intervals run
+concurrently, doubling the update rate and causing stale-closure bugs.
+
+### 12b. `useGame` — interval cleanup + local score copy
+
+```js
+import { useState, useEffect } from 'react'
+import { fetchGame } from '../api/mock'
+
+function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)) }
+
+export function useGame(id) {
+  const [game, setGame] = useState(null)
+  // Local score state — never mutate the MOCK_GAMES constant directly.
+  // If agentScores were written back to the shared mock object, every subsequent
+  // fetchGame call would return pre-mutated data, breaking navigation back to
+  // the dashboard or opening the same game in a new tab.
+  const [agentScores, setAgentScores] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchGame(id).then(g => {
+      setGame(g)
+      setAgentScores(deepCopy(g.scores))  // isolated local copy
+      setIsLoading(false)
+    })
+
+    const id_interval = setInterval(() => {
+      setAgentScores(prev => {
+        if (!prev) return prev
+        const next = deepCopy(prev)
+        for (const agent of Object.keys(next)) {
+          next[agent].social    = Math.min(100, Math.max(0, next[agent].social    + (Math.random() * 4 - 2)))
+          next[agent].planetary = Math.min(100, Math.max(0, next[agent].planetary + (Math.random() * 4 - 2)))
+        }
+        return next
+      })
+    }, 2000)
+
+    return () => clearInterval(id_interval)  // REQUIRED: same StrictMode reason as above
+  }, [id])
+
+  // Derive bestScore from local agentScores, not from game.scores
+  const bestScore = agentScores
+    ? Math.max(...Object.values(agentScores).map(s => (s.social + s.planetary) / 2))
+    : null
+
+  return { game, agentScores, bestScore, isLoading }
+}
+```
+
+Key invariants enforced here:
+1. `agentScores` is initialized from `deepCopy(g.scores)` — the shared `MOCK_GAMES`
+   constant is never touched after the initial fetch.
+2. The interval updater uses the functional form of `setAgentScores` to avoid
+   stale closures.
+3. `clearInterval` is returned from the effect to prevent duplicate intervals.
 
 ---
 
-## 13. CSS Approach
+## 13. Implementation Order (sequential, each is a shippable increment)
 
-- One global `index.css` for tokens, reset, and typography
+1. **Install deps** — `npm install --save react-router-dom`; verify `package.json`
+   lists it under `dependencies`
+2. **Wipe scaffold** — delete `src/App.css`; replace `src/index.css` wholesale with
+   the full reset + token CSS from §2; delete boilerplate from `App.jsx`
+3. **Add Google Fonts to `index.html`** — insert the three JetBrains Mono `<link>`
+   tags into `<head>` (§2a) so `--font-mono` resolves on first paint
+4. **Routing skeleton** — `main.jsx` with `BrowserRouter`, `App.jsx` with two routes,
+   stub `Dashboard` and `GameView` pages that render `<h1>` placeholders
+5. **Mock API layer** — `src/api/mock.js` with all data + async helpers
+6. **TopBar** — fixed header with live stats via `useLiveStats` hook (including
+   `clearInterval` cleanup per §12a)
+7. **Dashboard layout** — CSS grid shell with three named areas, no content yet
+8. **QuestionInput** — auto-grow textarea, submit handler opens modal (modal stub)
+9. **ActiveGamesGrid + GameCard** — fetch mock games, render grid
+10. **RecentResults** — horizontal strip from mock data
+11. **LeaderboardSidebar** — ordered list from mock data
+12. **PersonaCard** — single card component, selection state
+13. **PersonaModal** — full modal with all 13 personas, 2–5 constraint, team preview,
+    "Start Game" integration
+14. **HabitableZoneRing** — SVG Cartesian component, static first (hardcoded test
+    scores); verify that social=60, planetary=60 lands exactly on the threshold lines
+15. **useGame hook + GameView wiring** — live score simulation with proper interval
+    cleanup and local score copy (§12b); ring reacts to state
+16. **ScorePanel + AgentPointLegend** — complete the game view
+17. **Pulse animation** — add `ring-pulse` keyframe and trigger logic
+18. **Polish pass** — monospace font, hover states, loading shimmer, responsive CSS
+
+---
+
+## 14. CSS Approach
+
+- One global `index.css` for tokens, reset, and typography (including full `#root`
+  and heading resets to neutralize Vite scaffold defaults)
 - Each component imports a co-located `.module.css` file (CSS Modules)
 - No Tailwind, no styled-components — keeps the build light and reviewable
 - Grid and flexbox only (no float, no absolute except overlays)
@@ -433,7 +602,7 @@ Show "BEST" badge next to that agent's name.
 
 ---
 
-## 14. What is NOT in scope (prototype deferral)
+## 15. What is NOT in scope (prototype deferral)
 
 - `/leaderboard` and `/datasets` routes — nav links present but routes 404
 - Real Dolt API integration (all endpoints mocked)
@@ -444,11 +613,17 @@ Show "BEST" badge next to that agent's name.
 
 ---
 
-## 15. Key Decisions & Rationale
+## 16. Key Decisions & Rationale
 
 | Decision | Rationale |
 |---|---|
-| SVG for ring, not Canvas | Easier to animate with CSS, accessible, scales to any DPI |
+| `npm install --save react-router-dom` | Explicit save ensures `package.json` is updated for fresh installs |
+| Full CSS reset including `#root` and `h1`/`h2` | Vite scaffold injects opinionated styles that collide with CSS Modules |
+| Google Fonts `<link>` in `index.html` | `--font-mono` must resolve on first paint; CSS custom properties can't load fonts |
+| Cartesian X/Y axes for Habitable Zone (not concentric rings) | Concentric ring geometry does not map correctly to the social/planetary score thresholds; a point at exactly score=60 on both axes would fall far inside the inner ring (r=110) rather than on its boundary |
+| `clearInterval` in every `useEffect` that calls `setInterval` | React StrictMode double-mounts in dev; without cleanup two intervals run, doubling update rate |
+| `deepCopy(g.scores)` into local state in `useGame` | Prevents score drift from mutating the shared `MOCK_GAMES` constant, which would corrupt subsequent `fetchGame` calls |
+| SVG for ring/plot, not Canvas | Easier to animate with CSS, accessible, scales to any DPI |
 | CSS Modules over Tailwind | Matches "scientific field notebook" aesthetic, avoids class noise in JSX |
 | Polling via setInterval, not WebSocket | Prototype scope; clean swap-in surface |
 | React Router v6 (no loader API) | useEffect fetching is simpler for mock data |
@@ -457,4 +632,4 @@ Show "BEST" badge next to that agent's name.
 
 ---
 
-*Plan written 2026-03-23. Covers all spec sections 01–07 within prototype scope.*
+*Plan written 2026-03-23. Revised 2026-03-23 to address: explicit --save for react-router-dom, full CSS reset for Vite scaffold teardown, Cartesian axis approach for HabitableZoneRing (replacing incorrect concentric ring coordinate math), clearInterval cleanup in useLiveStats and useGame, deepCopy local score state in useGame to avoid mutating MOCK_GAMES, and Google Fonts link step in implementation order. Covers all spec sections 01–07 within prototype scope.*
