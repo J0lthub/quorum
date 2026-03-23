@@ -141,10 +141,17 @@ before. Place the font links at the end of `<head>` instead.)
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
-  href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
   rel="stylesheet"
 />
 ```
+
+Both `Inter` (weights 400 and 500) and `JetBrains Mono` (weights 400, 500, and 700)
+are loaded in a single stylesheet request. Inter is used for `--font-sans` (body
+text, labels, UI chrome); JetBrains Mono is used for `--font-mono` (usernames,
+commit hashes, score numbers). Inter is not a system font on most platforms, so it
+must be loaded explicitly — without this link `--font-sans` would fall back to
+`system-ui` and the typographic aesthetic would be inconsistent across OS.
 
 ---
 
@@ -250,32 +257,54 @@ export async function createGame(payload) // resolves new game object with gener
 Pure functions, no side effects. Export separately so tests can import them.
 
 ```js
-// Returns 0–100
-export function computeSocialScore(metrics) { /* weighted average of floor metrics */ }
-export function computePlanetaryScore(metrics) { /* weighted average of ceiling metrics */ }
+// Returns (social + planetary) / 2 if both >= 60, otherwise null (outside zone)
 export function computeHabitableScore(social, planetary) {
-  if (social < 60 || planetary < 60) return null // outside zone
+  if (social < 60 || planetary < 60) return null
   return (social + planetary) / 2
 }
+
+// Returns true if agent is inside the habitable zone
 export function isInZone(social, planetary) { return social >= 60 && planetary >= 60 }
 ```
 
-The hook wires these to mock agent data and returns reactive state.
+**Note on `computeSocialScore` / `computePlanetaryScore`:** These are intentionally
+omitted from the prototype. The mock data provides pre-computed `social` and
+`planetary` scores directly on each agent entry (see §3b). The `useGame` hook's
+simulation tick perturbs those pre-computed values by ±2 per tick — there are no
+raw metrics to aggregate. Adding metric-level computation would require a separate
+metrics schema and mock data that are out of scope for this prototype. If a real
+scoring pipeline is added later, `computeSocialScore(metrics)` and
+`computePlanetaryScore(metrics)` can be introduced alongside the metrics data layer.
 
 ---
 
 ## 5. Routing (`src/main.jsx` + `src/App.jsx`)
 
-`App.jsx` must be **fully replaced** (see §13 step 2). The Vite scaffold imports
+Both `main.jsx` and `App.jsx` must be **fully replaced**. The Vite scaffold imports
 assets like `./assets/react.svg` that cause immediate module-not-found errors in
-Vite. Write the file from scratch; do not attempt to edit around the scaffold.
+Vite. Write both files from scratch; do not attempt to edit around the scaffold.
+
+`main.jsx` — FULL FILE CONTENT (nothing from scaffold survives):
 
 ```jsx
-// main.jsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-// wrap <App /> in <BrowserRouter>
+import './index.css'
+import App from './App.jsx'
 
-// App.jsx — FULL FILE CONTENT (nothing from scaffold survives)
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>
+)
+```
+
+`App.jsx` — FULL FILE CONTENT (nothing from scaffold survives):
+
+```jsx
 import { Routes, Route } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import GameView  from './pages/GameView'
@@ -289,6 +318,13 @@ export default function App() {
   )
 }
 ```
+
+**Why both files must be fully replaced:** The Vite scaffold `main.jsx` does not
+wrap the app in `<BrowserRouter>`, causing React Router to throw "You cannot render
+a `<Route>` outside a `<Router>`" immediately on load. The scaffold `App.jsx` imports
+non-existent assets (`./assets/react.svg`, etc.) that cause Vite module-not-found
+errors before any new code runs. Neither file can be safely edited in-place — write
+both from scratch.
 
 ---
 
@@ -462,17 +498,43 @@ circle `r="14"` behind it at 40% opacity.
 
 ### 9e. Pulse animation on new best
 
-When `bestScore` changes (useEffect watching it), add CSS class `.ring-pulse` to the
-habitable zone fill rectangle. The class runs a 1.2s keyframe:
+When `bestScore` changes (tracked by a `useEffect` inside `HabitableZoneRing`),
+toggle a React state boolean `isPulsing` to `true`. Apply the CSS class conditionally
+via `className`:
+
+```jsx
+const [isPulsing, setIsPulsing] = useState(false)
+
+useEffect(() => {
+  if (bestScore == null) return
+  setIsPulsing(true)
+}, [bestScore])
+
+// In JSX:
+<rect
+  ...
+  className={`${styles.habitableZoneFill}${isPulsing ? ` ${styles.ringPulse}` : ''}`}
+  onAnimationEnd={() => setIsPulsing(false)}
+/>
+```
+
+The CSS module defines the keyframe and applies it when `ringPulse` is present:
+
 ```css
 @keyframes ring-pulse {
   0%   { opacity: 0.12; }
   40%  { opacity: 0.40; }
   100% { opacity: 0.12; }
 }
+
+.ringPulse {
+  animation: ring-pulse 1.2s ease-out forwards;
+}
 ```
 
-Remove the class after animation ends via `animationend` event listener.
+`onAnimationEnd` resets `isPulsing` to `false`, removing the class so the animation
+can re-trigger on the next `bestScore` change. This approach avoids imperative DOM
+manipulation (`classList.add/remove`) and requires no `useRef` on the SVG element.
 
 ### 9f. Zone expansion representation
 
@@ -574,7 +636,6 @@ export function useGame(id) {
     })
 
     const id_interval = setInterval(() => {
-      if (cancelled) return   // belt-and-suspenders: interval fires after unmount in StrictMode
       setAgentScores(prev => {
         if (!prev) return prev
         const next = deepCopy(prev)
@@ -586,8 +647,14 @@ export function useGame(id) {
       })
     }, 2000)
 
-    // Cleanup: set flag before clearing interval so any in-flight fetch also bails.
-    // This covers both StrictMode double-mount and id changes during navigation.
+    // Cleanup: clear the interval and set the flag so any in-flight fetchGame
+    // promise that resolves after this cleanup cannot call setState on the
+    // unmounted (or re-mounted) component instance.
+    // Note: `cancelled` does NOT need to be checked inside the setInterval callback
+    // or the setAgentScores functional updater — clearInterval(id_interval) ensures
+    // the interval never fires after cleanup. The flag's sole purpose is to guard
+    // the async fetchGame().then(...) path above, where a stale promise can resolve
+    // after unmount if the network (or simulated delay) outlasts the component.
     return () => {
       cancelled = true
       clearInterval(id_interval)
@@ -616,9 +683,15 @@ Key invariants enforced here:
 2. The interval updater uses the functional form of `setAgentScores` to avoid
    stale closures.
 3. `cancelled = true` plus `clearInterval` are both returned from the effect.
-   The flag prevents a stale async fetch (from an earlier `id` or unmounted instance)
-   from landing state into the new component instance — a real hazard in React
-   StrictMode which unmounts and remounts every component on initial render in dev.
+   - `clearInterval(id_interval)` prevents the interval from firing after cleanup;
+     no `cancelled` check is needed inside the interval callback or the
+     `setAgentScores` functional updater — that would be unreachable dead code.
+   - `cancelled = true` guards solely against stale `fetchGame` promises: if the
+     component unmounts (or `id` changes) while an async fetch is in-flight, the
+     `.then(g => { if (cancelled) return ... })` guard prevents the resolved data
+     from being written into the new (or unmounted) component instance. This is a
+     real hazard in React StrictMode, which unmounts and remounts every component
+     on initial dev render, and during navigation when `id` changes mid-fetch.
 4. `bestScore` is derived only from in-zone agents (social >= 60 AND planetary >= 60);
    out-of-zone agents do not contribute, and `null` is returned when no agent is
    in-zone so the pulse animation is not triggered spuriously.
@@ -652,11 +725,16 @@ Key invariants enforced here:
    }
    ```
 
-3. **Add Google Fonts to `index.html`** — insert the three JetBrains Mono `<link>`
-   tags as the last elements inside `<head>`, before `</head>` (§2a), so `--font-mono`
-   resolves on first paint
-4. **Routing skeleton** — `main.jsx` with `BrowserRouter`, `App.jsx` with two routes,
-   stub `Dashboard` and `GameView` pages that render `<h1>` placeholders
+3. **Add Google Fonts to `index.html`** — insert the Inter + JetBrains Mono `<link>`
+   tags (single combined stylesheet URL, see §2a) as the last elements inside `<head>`,
+   before `</head>`, so both `--font-sans` (Inter) and `--font-mono` (JetBrains Mono)
+   resolve on first paint
+4. **Routing skeleton** — **FULLY REPLACE `src/main.jsx`** with the complete content
+   from §5 (wraps `<App />` in `<StrictMode><BrowserRouter>`); **FULLY REPLACE
+   `src/App.jsx`** with the routing skeleton from §5 (two routes); add stub
+   `Dashboard` and `GameView` pages that render `<h1>` placeholders. The app will
+   crash with "You cannot render a `<Route>` outside a `<Router>`" if `BrowserRouter`
+   is missing from `main.jsx`.
 5. **Mock API layer** — `src/api/mock.js` with all data + async helpers
 6. **TopBar** — fixed header with live stats via `useLiveStats` hook (including
    `clearInterval` cleanup per §12a)
@@ -710,7 +788,10 @@ Key invariants enforced here:
 | Full replacement of `App.jsx` (not edit/wipe) | Vite scaffold imports non-existent assets (`./assets/react.svg`, etc.) that cause immediate module-not-found errors; a fresh write is the only safe approach |
 | Explicit field schemas for MOCK_GAMES, MOCK_RECENT, MOCK_LEADERBOARD | Without canonical field names, each component invents its own, making the "clean Dolt swap-in" goal impossible |
 | Cartesian X/Y axes for Habitable Zone (not concentric rings) | Concentric ring geometry does not map correctly to the social/planetary score thresholds; a point at exactly score=60 on both axes would fall far inside the inner ring (r=110) rather than on its boundary |
-| `clearInterval` + `cancelled` flag in `useGame` `useEffect` | React StrictMode unmounts/remounts every component on initial dev render; without the flag a stale async fetch resolves after unmount and overwrites state in the new instance |
+| `clearInterval` + `cancelled` flag in `useGame` `useEffect` | `cancelled` guards only the async `fetchGame` promise path — a stale promise can resolve after unmount and overwrite state in the new instance. `clearInterval` alone prevents interval ticks after cleanup; no `cancelled` check is needed inside the interval callback |
+| `isPulsing` boolean state for ring-pulse (not imperative `classList`) | Using React state + `onAnimationEnd` to toggle the CSS class is simpler and idiomatic; imperative `classList.add/remove` would require a `useRef` on the SVG element and mismatches React's rendering model |
+| `BrowserRouter` wraps `<App>` in `main.jsx` (not in `App.jsx`) | `<Routes>` and `<Route>` must be descendants of a `<Router>`; placing `BrowserRouter` in `main.jsx` ensures it wraps the entire tree and cannot be accidentally omitted |
+| Inter loaded via Google Fonts (weights 400, 500) | Inter is not a system font on most platforms; without an explicit font load `--font-sans` would silently fall back to `system-ui`, producing inconsistent typography |
 | `bestScore` derived only from in-zone agents | An agent with e.g. social=95, planetary=10 would dominate `Math.max` but is not in the habitable zone; only agents where both social >= 60 AND planetary >= 60 are eligible |
 | `deepCopy(g.scores)` into local state in `useGame` | Prevents score drift from mutating the shared `MOCK_GAMES` constant, which would corrupt subsequent `fetchGame` calls |
 | SVG for ring/plot, not Canvas | Easier to animate with CSS, accessible, scales to any DPI |
@@ -722,4 +803,4 @@ Key invariants enforced here:
 
 ---
 
-*Plan written 2026-03-23. Revised 2026-03-23 (pass 1) to address: explicit --save for react-router-dom, full CSS reset for Vite scaffold teardown, Cartesian axis approach for HabitableZoneRing (replacing incorrect concentric ring coordinate math), clearInterval cleanup in useLiveStats and useGame, deepCopy local score state in useGame to avoid mutating MOCK_GAMES, and Google Fonts link step in implementation order. Revised 2026-03-23 (pass 2) to address: (1) stale async fetch in useGame — added `let cancelled = false` flag guarding all setState calls and returned `() => { cancelled = true; clearInterval(id_interval) }` from effect; (2) explicit field schemas for MOCK_GAMES, MOCK_RECENT, and MOCK_LEADERBOARD replacing empty stubs; (3) bestScore now ignores out-of-zone agents — only agents where social >= 60 AND planetary >= 60 are included, result is null when no agent is in-zone; (4) Google Fonts insertion anchor corrected to before `</head>` (Vite has no `<link rel="stylesheet">` for index.css in index.html); (5) App.jsx wipe instruction changed to full replacement with complete file content to avoid Vite module-not-found errors from scaffold asset imports. Covers all spec sections 01–07 within prototype scope.*
+*Plan written 2026-03-23. Revised 2026-03-23 (pass 1) to address: explicit --save for react-router-dom, full CSS reset for Vite scaffold teardown, Cartesian axis approach for HabitableZoneRing (replacing incorrect concentric ring coordinate math), clearInterval cleanup in useLiveStats and useGame, deepCopy local score state in useGame to avoid mutating MOCK_GAMES, and Google Fonts link step in implementation order. Revised 2026-03-23 (pass 2) to address: (1) stale async fetch in useGame — added `let cancelled = false` flag guarding all setState calls and returned `() => { cancelled = true; clearInterval(id_interval) }` from effect; (2) explicit field schemas for MOCK_GAMES, MOCK_RECENT, and MOCK_LEADERBOARD replacing empty stubs; (3) bestScore now ignores out-of-zone agents — only agents where social >= 60 AND planetary >= 60 are included, result is null when no agent is in-zone; (4) Google Fonts insertion anchor corrected to before `</head>` (Vite has no `<link rel="stylesheet">` for index.css in index.html); (5) App.jsx wipe instruction changed to full replacement with complete file content to avoid Vite module-not-found errors from scaffold asset imports. Revised 2026-03-23 (pass 3) to address: (1) main.jsx never got BrowserRouter — added full main.jsx replacement content to §5 and §13 step 4 with StrictMode+BrowserRouter wrapping App; (2) removed dead computeSocialScore/computePlanetaryScore from §4 — prototype uses pre-computed mock scores perturbed directly, no metrics layer needed; (3) HabitableZoneRing pulse animation now uses isPulsing state boolean + onAnimationEnd (removed imperative classList approach that had no useRef); (4) Inter added to Google Fonts link (single combined stylesheet URL) — Inter is not a system font and must be loaded explicitly; (5) cancelled flag comment corrected — it guards only stale fetchGame promises, not interval ticks (clearInterval makes that check dead code). Covers all spec sections 01–07 within prototype scope.*
