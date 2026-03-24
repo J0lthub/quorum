@@ -29,9 +29,10 @@ export default function QuestionInput({ onSubmit }) {
 
   return (
     <div className={styles.wrapper}>
-      <label className={styles.label}>Ask a question</label>
+      <label className={styles.label} htmlFor="question-input">Ask a question</label>
       <form onSubmit={handleSubmit}>
         <textarea
+          id="question-input"
           ref={textareaRef}
           className={styles.textarea}
           placeholder="Ask a question about the world..."

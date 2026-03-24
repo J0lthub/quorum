@@ -1,12 +1,12 @@
 import { PERSONAS } from '../../api/mock'
-import { isInZone, computeHabitableScore } from '../../hooks/useGame'
+import { isInZone, computeHabitableScore } from '../../utils/scoring'
 import styles from './ScorePanel.module.css'
 
 function getPersona(personaId) {
   return PERSONAS.find(p => p.id === personaId)
 }
 
-export default function ScorePanel({ agents, agentScores, bestScore }) {
+export default function ScorePanel({ agents, agentScores, bestAgentId }) {
   if (!agents || !agentScores) return null
 
   return (
@@ -20,7 +20,7 @@ export default function ScorePanel({ agents, agentScores, bestScore }) {
         const name = persona?.name || agent.personaId
         const inZone = isInZone(score.social, score.planetary)
         const hScore = computeHabitableScore(score.social, score.planetary)
-        const isBest = hScore != null && bestScore != null && Math.abs(hScore - bestScore) < 0.01
+        const isBest = agent.id === bestAgentId
 
         return (
           <div

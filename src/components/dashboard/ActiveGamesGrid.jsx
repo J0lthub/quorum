@@ -8,10 +8,20 @@ export default function ActiveGamesGrid() {
 
   useEffect(() => {
     let cancelled = false
-    fetchGames().then(data => {
-      if (!cancelled) setGames(data)
-    })
-    return () => { cancelled = true }
+
+    function load() {
+      fetchGames().then(data => {
+        if (!cancelled) setGames(data)
+      })
+    }
+
+    load()
+    const id_interval = setInterval(load, 10000)
+
+    return () => {
+      cancelled = true
+      clearInterval(id_interval)
+    }
   }, [])
 
   return (

@@ -47,6 +47,21 @@ export default function GameView() {
 
   const enriched = enrichAgents(game.agents)
 
+  const bestAgentId = agentScores
+    ? (() => {
+        let best = null
+        let bestVal = -Infinity
+        for (const agent of game.agents) {
+          const s = agentScores[agent.id]
+          if (s && s.social >= 60 && s.planetary >= 60) {
+            const avg = (s.social + s.planetary) / 2
+            if (avg > bestVal) { bestVal = avg; best = agent.id }
+          }
+        }
+        return best
+      })()
+    : null
+
   return (
     <div className={styles.page}>
       <TopBar />
@@ -74,7 +89,7 @@ export default function GameView() {
           <ScorePanel
             agents={enriched}
             agentScores={agentScores}
-            bestScore={bestScore}
+            bestAgentId={bestAgentId}
           />
         </div>
       </div>

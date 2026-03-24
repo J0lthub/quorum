@@ -1,5 +1,7 @@
 import { nanoid } from 'nanoid'
 
+const branchCounters = new Map()
+
 export const PERSONAS = [
   { id: 'scientist',          name: 'Scientist',               color: '#5b8dd9', icon: '🔬', blurb: 'Hypothesis-driven. Weights statistical significance.',   priorities: ['evidence','significance','replication'] },
   { id: 'engineer',           name: 'Engineer',                color: '#e07b39', icon: '⚙️', blurb: 'Pragmatic and constraint-aware. Optimizes for feasibility.', priorities: ['feasibility','cost','buildability'] },
@@ -163,7 +165,11 @@ export const MOCK_LIVE_STATS = { activeAgents: 47, totalCommits: 12843, datasets
 const LIVE_GAMES = new Map()
 
 export async function fetchGames() {
-  return new Promise(resolve => setTimeout(() => resolve(MOCK_GAMES), 120))
+  return new Promise(resolve => setTimeout(() => resolve([...LIVE_GAMES.values(), ...MOCK_GAMES]), 120))
+}
+
+export async function fetchRecent() {
+  return new Promise(resolve => setTimeout(() => resolve(MOCK_RECENT), 120))
 }
 
 export async function fetchGame(id) {
@@ -193,12 +199,16 @@ export async function fetchLiveStats() {
 export async function createGame({ question, agents: personaIds }) {
   return new Promise(resolve => setTimeout(() => {
     const gameId = nanoid()
-    const agentDescriptors = personaIds.map(personaId => ({
-      id:        nanoid(),
-      personaId,
-      branch:    `agent/${personaId}-01`,
-      iteration: 0,
-    }))
+    const agentDescriptors = personaIds.map(personaId => {
+      const count = (branchCounters.get(personaId) ?? 0) + 1
+      branchCounters.set(personaId, count)
+      return {
+        id:        nanoid(),
+        personaId,
+        branch:    `agent/${personaId}-${String(count).padStart(2, '0')}`,
+        iteration: 0,
+      }
+    })
     const scores = {}
     for (const agent of agentDescriptors) {
       scores[agent.id] = {

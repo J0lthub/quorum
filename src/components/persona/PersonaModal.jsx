@@ -49,15 +49,20 @@ export default function PersonaModal({ question, onClose }) {
           Select 2–5 personas ({selected.length}/5 selected)
         </p>
 
-        <div className={styles.grid}>
-          {PERSONAS.map(persona => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              selected={selected.includes(persona.id)}
-              onToggle={handleToggle}
-            />
-          ))}
+        <div className={styles.grid} role="group" aria-label="Select agent personas">
+          {PERSONAS.map(persona => {
+            const isSelected = selected.includes(persona.id)
+            const isDisabled = selected.length >= 5 && !isSelected
+            return (
+              <PersonaCard
+                key={persona.id}
+                persona={persona}
+                selected={isSelected}
+                isDisabled={isDisabled}
+                onToggle={handleToggle}
+              />
+            )
+          })}
         </div>
 
         {error && <p className={styles.error}>{error}</p>}

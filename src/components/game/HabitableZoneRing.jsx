@@ -15,7 +15,7 @@ export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
       prevBestRef.current = null
       return
     }
-    if (bestScore > prevBestRef.current) {
+    if (prevBestRef.current === null || bestScore > prevBestRef.current) {
       setIsPulsing(true)
     }
     prevBestRef.current = bestScore

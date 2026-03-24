@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { fetchGame } from '../api/mock'
 import { isInZone, computeHabitableScore } from '../utils/scoring'
 
-export { isInZone, computeHabitableScore }
-
 function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)) }
 
 export function useGame(id) {
@@ -17,29 +15,32 @@ export function useGame(id) {
     setIsLoading(true)
 
     let cancelled = false
+    let id_interval = null
 
     fetchGame(id).then(g => {
       if (cancelled) return
       setGame(g)
       setAgentScores(g ? deepCopy(g.scores) : null)
       setIsLoading(false)
-    })
 
-    const id_interval = setInterval(() => {
-      setAgentScores(prev => {
-        if (!prev) return prev
-        const next = deepCopy(prev)
-        for (const agent of Object.keys(next)) {
-          next[agent].social    = Math.min(100, Math.max(0, next[agent].social    + (Math.random() * 4 - 2)))
-          next[agent].planetary = Math.min(100, Math.max(0, next[agent].planetary + (Math.random() * 4 - 2)))
-        }
-        return next
-      })
-    }, 2000)
+      if (g !== null) {
+        id_interval = setInterval(() => {
+          setAgentScores(prev => {
+            if (!prev) return prev
+            const next = deepCopy(prev)
+            for (const agent of Object.keys(next)) {
+              next[agent].social    = Math.min(100, Math.max(0, next[agent].social    + (Math.random() * 4 - 2)))
+              next[agent].planetary = Math.min(100, Math.max(0, next[agent].planetary + (Math.random() * 4 - 2)))
+            }
+            return next
+          })
+        }, 2000)
+      }
+    })
 
     return () => {
       cancelled = true
-      clearInterval(id_interval)
+      if (id_interval !== null) clearInterval(id_interval)
     }
   }, [id])
 

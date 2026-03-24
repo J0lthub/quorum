@@ -1,6 +1,6 @@
 import styles from './PersonaCard.module.css'
 
-export default function PersonaCard({ persona, selected, onToggle }) {
+export default function PersonaCard({ persona, selected, isDisabled, onToggle }) {
   return (
     <div
       className={`${styles.card} ${selected ? styles.selected : ''}`}
@@ -8,6 +8,7 @@ export default function PersonaCard({ persona, selected, onToggle }) {
       onClick={() => onToggle(persona.id)}
       role="checkbox"
       aria-checked={selected}
+      aria-disabled={isDisabled}
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(persona.id) } }}
     >
