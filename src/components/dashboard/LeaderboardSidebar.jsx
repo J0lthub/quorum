@@ -45,7 +45,7 @@ export default function LeaderboardSidebar() {
                   style={{ background: getPersonaColor(entry.winningPersona) }}
                 />
                 <span className={styles.username}>{entry.username}</span>
-                <span className={styles.score}>{entry.bestScore.toFixed(1)}</span>
+                <span className={styles.score}>{entry.bestScore != null ? Number(entry.bestScore).toFixed(1) : '—'}</span>
               </li>
             ))}
           </ol>

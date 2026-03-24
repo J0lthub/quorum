@@ -13,6 +13,20 @@ router.get('/', async (_req, res) => {
 
     const results = []
 
+    if (games.length === 0) {
+      return res.json(results)
+    }
+
+    const gameIds = games.map(g => g.id)
+    const placeholders = gameIds.map(() => '?').join(', ')
+
+    // Fetch all commit hashes in a single query instead of one per game (N+1 fix)
+    const [lbRows] = await pool.execute(
+      `SELECT game_id, commit_hash FROM leaderboard WHERE game_id IN (${placeholders})`,
+      gameIds
+    )
+    const commitHashMap = new Map(lbRows.map(r => [r.game_id, r.commit_hash]))
+
     for (const game of games) {
       // Find the best in-zone agent score for this game (highest habitable)
       const [[best]] = await pool.execute(
@@ -25,17 +39,11 @@ router.get('/', async (_req, res) => {
         [game.id]
       )
 
-      // Get the commit hash stored by finishGame in the leaderboard table.
-      // This is more reliable than the fragile dolt_log LIKE query.
-      const [lbRows] = await pool.execute(
-        'SELECT commit_hash FROM leaderboard WHERE game_id = ? LIMIT 1',
-        [game.id]
-      )
-      const commitHash = lbRows[0]?.commit_hash ?? null
-
       // Skip games where no in-zone agent exists (best is undefined/null) to
       // prevent `habitableScore.toFixed` TypeError on the client.
       if (!best) continue
+
+      const commitHash = commitHashMap.get(game.id) ?? null
 
       results.push({
         id:             game.id,

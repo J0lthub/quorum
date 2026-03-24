@@ -75,6 +75,7 @@ router.post('/:id/tick', async (req, res) => {
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
       })
 
+      // agents.iteration is updated on the agent branch only. main-branch iteration is derived from COUNT(agent_scores) in buildGamePayloads.
       // (b) Write the same score row to main and commit it — main is the global
       // index for leaderboard / stats queries. All writes to main MUST happen
       // inside withBranch so that DOLT_ADD and DOLT_COMMIT share the same

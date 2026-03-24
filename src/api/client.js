@@ -24,6 +24,7 @@ async function post(path, body) {
 
 // ─── snake_case → camelCase helpers ────────────────────────────────────────
 
+import { mapLeaderboardRow } from './mappers.js'
 export { mapLeaderboardRow } from './mappers.js'
 
 // ────────────────────────────────────────────────────────────────────────────

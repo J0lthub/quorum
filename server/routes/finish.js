@@ -137,6 +137,7 @@ router.post('/:id/finish', async (req, res) => {
     if (game.status === 'completed') return res.json({ already: true })
 
     const result = await finishGame(gameId)
+    if (!result) return res.json({ already: true })
     res.json({ finished: true, ...result })
   } catch (err) {
     console.error(err)

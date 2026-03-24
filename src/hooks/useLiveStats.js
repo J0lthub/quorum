@@ -12,7 +12,7 @@ export function useLiveStats() {
       inFlightRef.current = true
       fetchLiveStats().then(data => {
         if (!cancelled) setStats(data)
-      }).finally(() => { inFlightRef.current = false })
+      }).catch(err => { console.error('fetchLiveStats failed', err) }).finally(() => { inFlightRef.current = false })
     }
 
     const id = setInterval(() => {
@@ -20,7 +20,7 @@ export function useLiveStats() {
       inFlightRef.current = true
       fetchLiveStats().then(data => {
         if (!cancelled) setStats(data)
-      }).finally(() => { inFlightRef.current = false })
+      }).catch(err => { console.error('fetchLiveStats failed', err) }).finally(() => { inFlightRef.current = false })
     }, 5000)
 
     return () => {

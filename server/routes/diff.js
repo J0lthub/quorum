@@ -5,6 +5,7 @@ const router = Router()
 
 // Cache which column name works across Dolt versions so we don't retry every call.
 // Dolt >= 1.x uses 'to_commit_hash'; older versions use 'to_commit'.
+// cached per process-lifetime; restart server if Dolt version changes
 let diffCommitColumn = null  // null = not yet determined
 
 // GET /api/games/:id/diff

@@ -97,8 +97,7 @@ run_sql "INSERT IGNORE INTO datasets (id, name, row_count, category, description
   ('ds-09', 'TfL-Open-2024',   8400, 'Transport',   'Transport for London open data 2024');
 "
 
-echo "==> Inspect dolt_diff_agent_scores column names (Dolt >= 1.x uses to_commit_hash; older uses to_commit)"
-run_sql "SHOW COLUMNS FROM dolt_diff_agent_scores;"
+# Debug: run_sql "SHOW COLUMNS FROM dolt_diff_agent_scores;" 2>&1 | head -20
 
 echo "==> Initial Dolt commit"
 run_sql "CALL DOLT_ADD('.')"

@@ -10,7 +10,7 @@ router.get('/', async (_req, res) => {
       "SELECT COUNT(*) AS activeAgents FROM agents a JOIN games g ON a.game_id = g.id WHERE g.status = 'active'"
     )
     const [[{ totalIterations }]] = await pool.execute(
-      'SELECT COUNT(*) AS totalIterations FROM agent_scores WHERE agent_id IN (SELECT id FROM agents)'
+      'SELECT COUNT(*) AS totalIterations FROM agent_scores'
     )
     const [[{ datasets }]] = await pool.execute(
       'SELECT COUNT(*) AS datasets FROM datasets'

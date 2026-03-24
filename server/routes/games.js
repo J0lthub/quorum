@@ -44,7 +44,7 @@ async function buildGamePayloads(gameIds) {
      FROM games g
      LEFT JOIN agents a ON a.game_id = g.id
      LEFT JOIN agent_scores s ON s.agent_id = a.id
-       AND s.id = (SELECT id FROM agent_scores WHERE agent_id = a.id ORDER BY iteration DESC LIMIT 1)
+       AND s.id = (SELECT id FROM agent_scores WHERE agent_id = a.id ORDER BY iteration DESC, committed_at DESC LIMIT 1)
      WHERE g.id IN (${placeholders})
      ORDER BY g.created_at DESC`,
     gameIds
@@ -226,10 +226,14 @@ router.post('/', async (req, res) => {
       }
     } catch (branchErr) {
       console.error('Branch creation failed — cleaning up game rows:', branchErr)
-      // Delete in FK-safe order: agent_scores → agents → games
-      await pool.execute('DELETE FROM agent_scores WHERE game_id = ?', [gameId])
-      await pool.execute('DELETE FROM agents WHERE game_id = ?', [gameId])
-      await pool.execute('DELETE FROM games WHERE id = ?', [gameId])
+      // Delete in FK-safe order: agent_scores → agents → games, then commit on main
+      await withBranch('main', async conn => {
+        await conn.execute('DELETE FROM agent_scores WHERE game_id = ?', [gameId])
+        await conn.execute('DELETE FROM agents WHERE game_id = ?', [gameId])
+        await conn.execute('DELETE FROM games WHERE id = ?', [gameId])
+        await conn.execute('CALL DOLT_ADD(?)', ['.'])
+        await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`rollback: failed to create branches for game ${gameId}`])
+      })
       return res.status(500).json({ error: 'Failed to create agent branches' })
     }
 
