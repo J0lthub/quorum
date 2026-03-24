@@ -2,12 +2,17 @@ import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 dotenv.config()
 
+const DB_NAME = process.env.DOLT_DATABASE ?? 'donut_game'
+if (!/^[a-zA-Z0-9_]+$/.test(DB_NAME)) {
+  throw new Error('DOLT_DATABASE must be alphanumeric/underscore only')
+}
+
 const BASE_CONFIG = {
   host:     process.env.DOLT_HOST     ?? '127.0.0.1',
   port:     parseInt(process.env.DOLT_PORT ?? '3307'),
   user:     process.env.DOLT_USER     ?? 'root',
   password: process.env.DOLT_PASSWORD ?? '',
-  database: process.env.DOLT_DATABASE ?? 'donut_game',
+  database: DB_NAME,
 }
 
 // Shared pool for main-branch / stateless reads
@@ -26,7 +31,9 @@ export async function withBranch(branch, fn) {
     await conn.execute('CALL DOLT_CHECKOUT(?)', [branch])
     // Explicitly select the database after checkout to guarantee the correct
     // database is active regardless of Dolt version behaviour.
-    await conn.execute('USE ??', [process.env.DOLT_DATABASE ?? 'donut_game'])
+    // DB_NAME is validated at startup (alphanumeric/underscore only), so this
+    // template literal is safe — no SQL injection risk.
+    await conn.execute(`USE \`${DB_NAME}\``)
     return await fn(conn)
   } finally {
     await conn.end()
@@ -45,6 +52,7 @@ export async function withBranch(branch, fn) {
 export async function ensureBranch(branchName) {
   const conn = await mysql.createConnection(BASE_CONFIG)
   try {
+    // DOLT_CHECKOUT('main') is idempotent — safe to call even if already on main.
     await conn.execute('CALL DOLT_CHECKOUT(?)', ['main'])
     try {
       await conn.execute('CALL DOLT_BRANCH(?)', [branchName])

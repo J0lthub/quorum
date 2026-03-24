@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS games (
   question    TEXT          NOT NULL,
   status      VARCHAR(16)   NOT NULL DEFAULT 'active',
   username    VARCHAR(64)   NOT NULL DEFAULT 'anonymous',
+  dataset     VARCHAR(128)  NOT NULL DEFAULT '',
   created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 "

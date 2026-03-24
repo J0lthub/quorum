@@ -27,4 +27,9 @@ app.use('/api/leaderboard',  leaderboardRouter)
 app.use('/api/recent',       recentRouter)
 app.use('/api/stats',        statsRouter)
 
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  console.error(err)
+  res.status(500).json({ error: 'Internal server error' })
+})
+
 app.listen(PORT, () => console.log(`Express listening on :${PORT}`))

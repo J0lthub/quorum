@@ -3,14 +3,14 @@ import { pool }   from '../db.js'
 
 const router = Router()
 
-// GET /api/leaderboard — top 10 by best_score desc, with rank computed at query time
+// GET /api/leaderboard — top 10 by best_score desc, rank added in JS to avoid
+// Dolt window function compatibility concerns.
 router.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT *, ROW_NUMBER() OVER (ORDER BY best_score DESC) AS rank
-       FROM leaderboard ORDER BY best_score DESC LIMIT 10`
+      'SELECT * FROM leaderboard ORDER BY best_score DESC LIMIT 10'
     )
-    res.json(rows)
+    res.json(rows.map((row, i) => ({ ...row, rank: i + 1 })))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })

@@ -15,24 +15,23 @@ router.get('/:id/diff', async (req, res) => {
     const diffs = {}
 
     for (const agent of agents) {
-      const commitLog = await withBranch(agent.branch_name, async (conn) => {
-        const [rows] = await conn.execute(
+      // Merge both reads into a single withBranch call to eliminate the TOCTOU
+      // window that could occur if a commit lands between the two separate calls.
+      await withBranch(agent.branch_name, async (conn) => {
+        const [commitLog] = await conn.execute(
           'SELECT commit_hash, message, date FROM dolt_log ORDER BY date DESC LIMIT 2'
         )
-        return rows
-      })
 
-      if (commitLog.length < 2) {
-        diffs[agent.id] = { commits: commitLog, changes: [] }
-        continue
-      }
+        if (commitLog.length < 2) {
+          diffs[agent.id] = { commits: commitLog, changes: [] }
+          return
+        }
 
-      const [toCommit, fromCommit] = commitLog  // newest first
+        const [toCommit, fromCommit] = commitLog  // newest first
 
-      const changes = await withBranch(agent.branch_name, async (conn) => {
         // Dolt 1.77 uses 'to_commit' (not 'to_commit_hash').
         // Use 'to_commit' — confirmed via SHOW COLUMNS FROM dolt_diff_agent_scores in init-dolt.sh.
-        const [rows] = await conn.execute(
+        const [changes] = await conn.execute(
           `SELECT
              diff_type,
              to_social_score,    from_social_score,
@@ -45,15 +44,14 @@ router.get('/:id/diff', async (req, res) => {
            WHERE to_commit = ?`,
           [toCommit.commit_hash]
         )
-        return rows
-      })
 
-      diffs[agent.id] = {
-        fromCommit: fromCommit.commit_hash,
-        toCommit:   toCommit.commit_hash,
-        message:    toCommit.message,
-        changes,
-      }
+        diffs[agent.id] = {
+          fromCommit: fromCommit.commit_hash,
+          toCommit:   toCommit.commit_hash,
+          message:    toCommit.message,
+          changes,
+        }
+      })
     }
 
     res.json(diffs)

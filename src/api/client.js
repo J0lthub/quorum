@@ -24,17 +24,7 @@ async function post(path, body) {
 
 // ─── snake_case → camelCase helpers ────────────────────────────────────────
 
-/** Map a leaderboard row (snake_case from MySQL) to camelCase for the client. */
-export const mapLeaderboardRow = row => ({
-  rank:           row.rank,
-  username:       row.username,
-  bestScore:      row.best_score,
-  winningPersona: row.winning_persona,
-  question:       row.question,
-  dataset:        row.dataset,
-  date:           row.created_at,
-  commitHash:     row.commit_hash,
-})
+export { mapLeaderboardRow } from './mappers.js'
 
 // ────────────────────────────────────────────────────────────────────────────
 

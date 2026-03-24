@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapLeaderboardRow } from '../api/client.js'
+import { mapLeaderboardRow } from '../api/mappers.js'
 
 describe('mapLeaderboardRow', () => {
   it('maps all snake_case fields to camelCase', () => {
@@ -49,5 +49,23 @@ describe('mapLeaderboardRow', () => {
     expect(mapped.winningPersona).toBeNull()
     expect(mapped.commitHash).toBeNull()
     expect(mapped.date).toBeNull()
+  })
+
+  it('null winning_persona maps to null (not undefined)', () => {
+    const row = {
+      rank: 3, username: 'carol', best_score: 65, winning_persona: null,
+      question: 'Q2', dataset: '', created_at: '2026-03-01', commit_hash: 'aaa0000',
+    }
+    const mapped = mapLeaderboardRow(row)
+    expect(mapped.winningPersona).toBeNull()
+  })
+
+  it('missing best_score (undefined) falls back to null', () => {
+    const row = {
+      rank: 4, username: 'dave', best_score: undefined, winning_persona: 'degrowth',
+      question: 'Q3', dataset: '', created_at: '2026-03-02', commit_hash: 'bbb1111',
+    }
+    const mapped = mapLeaderboardRow(row)
+    expect(mapped.bestScore).toBeNull()
   })
 })

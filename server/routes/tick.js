@@ -79,15 +79,14 @@ router.post('/:id/tick', async (req, res) => {
       // index for leaderboard / stats queries. All writes to main MUST happen
       // inside withBranch so that DOLT_ADD and DOLT_COMMIT share the same
       // connection as the INSERT (each connection has its own staging area).
+      // NOTE: agents.iteration is updated ONLY on the agent branch (above).
+      // Updating it here too would desync branches, so it is intentionally omitted.
       await withBranch('main', async (conn) => {
         await conn.execute(
           `INSERT INTO agent_scores
              (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
            VALUES (?,?,?,?,?,?,?,?,?)`,
           [mainScoreId, agent.id, gameId, newIteration, social, planetary, habitable, zone, commitMsg]
-        )
-        await conn.execute(
-          'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
         )
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])

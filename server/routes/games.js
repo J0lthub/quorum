@@ -6,7 +6,7 @@ const router = Router()
 
 // ─── Persona validation ─────────────────────────────────────────────────────
 
-// These 13 ids mirror the PERSONAS array in src/api/client.js.
+// These 13 ids mirror the PERSONAS array in src/api/client.js exactly.
 // Update both places if the persona list changes.
 const VALID_PERSONA_IDS = new Set([
   'scientist',
@@ -15,13 +15,13 @@ const VALID_PERSONA_IDS = new Set([
   'mathematician',
   'journalist',
   'commons_steward',
-  'regenerative_economist',
-  'social_equity_analyst',
-  'planetary_boundaries',
-  'care_economy_advocate',
+  'regenerative_econ',
+  'equity_analyst',
+  'planetary_bounds',
+  'care_economy',
   'urban_ecologist',
-  'degrowth_strategist',
-  'indigenous_knowledge',
+  'degrowth',
+  'indigenous',
 ])
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -110,17 +110,20 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string }
+// POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string, dataset?: string }
 router.post('/', async (req, res) => {
-  const { question, agents: personaIds, username = 'anonymous' } = req.body
+  const { question, agents: personaIds, username = 'anonymous', dataset = '' } = req.body
 
   // Type guards — must come before any .length access
   if (typeof question !== 'string') return res.status(400).json({ error: 'question must be a string' })
   if (!Array.isArray(personaIds)) return res.status(400).json({ error: 'agents must be an array' })
+  if (username !== undefined && typeof username !== 'string') return res.status(400).json({ error: 'username must be a string' })
+  if (dataset !== undefined && typeof dataset !== 'string') return res.status(400).json({ error: 'dataset must be a string' })
 
   if (!question || question.length > 500) return res.status(400).json({ error: 'question required, max 500 chars' })
   if (personaIds.length < 2 || personaIds.length > 5) return res.status(400).json({ error: 'select 2–5 personas' })
   if (username && username.length > 64) return res.status(400).json({ error: 'username max 64 chars' })
+  if (dataset && dataset.length > 128) return res.status(400).json({ error: 'dataset max 128 chars' })
 
   // Persona ID validation against the known list
   const invalid = personaIds.filter(id => !VALID_PERSONA_IDS.has(id))
@@ -138,8 +141,8 @@ router.post('/', async (req, res) => {
     await withBranch('main', async (conn) => {
       // Step 1: Insert game row
       await conn.execute(
-        'INSERT INTO games (id, question, status, username) VALUES (?, ?, ?, ?)',
-        [gameId, question, 'active', username]
+        'INSERT INTO games (id, question, status, username, dataset) VALUES (?, ?, ?, ?, ?)',
+        [gameId, question, 'active', username, dataset]
       )
 
       // Step 2: Insert all agent and initial score rows
@@ -177,25 +180,36 @@ router.post('/', async (req, res) => {
       await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`game ${gameId}: create game and agents`])
     })
 
-    // Step 4: Create agent branches (they now fork from a committed main)
-    for (const agent of agentRows) {
-      await ensureBranch(agent.branch)
+    // Step 4: Create agent branches (they now fork from a committed main).
+    // Wrapped in try/catch: if branch creation fails, do best-effort cleanup so
+    // the partial game doesn't appear in the dashboard. Note: this cleanup does
+    // NOT roll back the Dolt commit on main (prototype limitation), but removing
+    // the DB rows means the game won't be surfaced by any query.
+    try {
+      for (const agent of agentRows) {
+        await ensureBranch(agent.branch)
 
-      // Write the initial score row onto the agent branch and commit it
-      await withBranch(agent.branch, async (branchConn) => {
-        await branchConn.execute(
-          `INSERT INTO agent_scores
-             (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
-           VALUES (?,?,?,0,?,?,?,?,?)
-           ON DUPLICATE KEY UPDATE id=id`,
-          [agent.scoreId, agent.id, gameId, agent.social, agent.planetary, agent.habitable,
-           agent.inZone, `init: ${agent.personaId} baseline scores`]
-        )
-        await branchConn.execute('CALL DOLT_ADD(?)', ['.'])
-        await branchConn.execute("CALL DOLT_COMMIT('-m', ?)", [
-          `init: ${agent.personaId} baseline — social=${agent.social.toFixed(1)} planetary=${agent.planetary.toFixed(1)}`
-        ])
-      })
+        // Write the initial score row onto the agent branch and commit it
+        await withBranch(agent.branch, async (branchConn) => {
+          await branchConn.execute(
+            `INSERT INTO agent_scores
+               (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
+             VALUES (?,?,?,0,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE id=id`,
+            [agent.scoreId, agent.id, gameId, agent.social, agent.planetary, agent.habitable,
+             agent.inZone, `init: ${agent.personaId} baseline scores`]
+          )
+          await branchConn.execute('CALL DOLT_ADD(?)', ['.'])
+          await branchConn.execute("CALL DOLT_COMMIT('-m', ?)", [
+            `init: ${agent.personaId} baseline — social=${agent.social.toFixed(1)} planetary=${agent.planetary.toFixed(1)}`
+          ])
+        })
+      }
+    } catch (branchErr) {
+      console.error('Branch creation failed — cleaning up game rows:', branchErr)
+      await pool.execute('DELETE FROM agents WHERE game_id = ?', [gameId])
+      await pool.execute('DELETE FROM games WHERE id = ?', [gameId])
+      return res.status(500).json({ error: 'Failed to create agent branches' })
     }
 
     const scores = {}

@@ -31,18 +31,10 @@ const router = Router()
  * and return early. This avoids the read-then-write TOCTOU race.
  */
 export async function finishGame(gameId) {
-  // DB-level idempotency guard: only one concurrent caller can win this UPDATE.
-  // If status is already 'completed' (or game not found), affectedRows === 0.
-  const [result] = await pool.execute(
-    "UPDATE games SET status='completed' WHERE id=? AND status='active'",
-    [gameId]
-  )
-  if (result.affectedRows === 0) return null
-
   // 1. Read game metadata and find the best in-zone agent BEFORE opening the
   //    write connection. These are read-only queries on already-committed data.
   const [[gameData]] = await pool.execute(
-    'SELECT question, username FROM games WHERE id = ?', [gameId]
+    'SELECT question, username, dataset FROM games WHERE id = ?', [gameId]
   )
   const [[best]] = await pool.execute(
     `SELECT s.habitable_score, s.social_score, s.planetary_score, a.persona_id
@@ -55,9 +47,15 @@ export async function finishGame(gameId) {
   )
 
   if (!best) {
-    // No in-zone agent — the UPDATE above already marked the game completed.
-    // Just commit the status change on a dedicated connection.
+    // No in-zone agent — move UPDATE inside withBranch so it is staged and
+    // committed on the same dedicated connection as DOLT_ADD/DOLT_COMMIT.
     await withBranch('main', async (conn) => {
+      // DB-level idempotency guard: only one concurrent caller can win this UPDATE.
+      const [result] = await conn.execute(
+        "UPDATE games SET status='completed' WHERE id=? AND status='active'",
+        [gameId]
+      )
+      if (result.affectedRows === 0) return
       await conn.execute('CALL DOLT_ADD(?)', ['.'])
       await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`game ${gameId}: completed (no in-zone agent)`])
     })
@@ -77,15 +75,27 @@ export async function finishGame(gameId) {
   //      work required; there is no way to know the hash before making it.
   const lbId = nanoid()
   let commitHash = ''
+  let finished = false
 
   await withBranch('main', async (conn) => {
+    // DB-level idempotency guard: only one concurrent caller can win this UPDATE.
+    // withBranch creates a fresh connection that sees committed rows, so the
+    // affectedRows check still provides the same race-free idempotency guarantee.
+    const [result] = await conn.execute(
+      "UPDATE games SET status='completed' WHERE id=? AND status='active'",
+      [gameId]
+    )
+    if (result.affectedRows === 0) return
+
+    finished = true
+
     // (a) INSERT leaderboard row with empty commit_hash placeholder
     await conn.execute(
       `INSERT INTO leaderboard
          (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
        VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
       [lbId, gameData.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
-       gameData.question, '']
+       gameData.question, gameData.dataset ?? '']
     )
     // (b) Stage everything (games UPDATE + leaderboard INSERT)
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
@@ -107,6 +117,7 @@ export async function finishGame(gameId) {
     ])
   })
 
+  if (!finished) return null
   return { lbId, best, commitHash }
 }
 
