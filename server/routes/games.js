@@ -206,23 +206,9 @@ router.post('/', async (req, res) => {
     // the DB rows means the game won't be surfaced by any query.
     try {
       for (const agent of agentRows) {
+        // The branch forks from committed main, which already contains the
+        // initial agent_scores row — no separate write needed here.
         await ensureBranch(agent.branch)
-
-        // Write the initial score row onto the agent branch and commit it
-        await withBranch(agent.branch, async (branchConn) => {
-          await branchConn.execute(
-            `INSERT INTO agent_scores
-               (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
-             VALUES (?,?,?,0,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE id=id`,
-            [agent.scoreId, agent.id, gameId, agent.social, agent.planetary, agent.habitable,
-             agent.inZone, `init: ${agent.personaId} baseline scores`]
-          )
-          await branchConn.execute('CALL DOLT_ADD(?)', ['.'])
-          await branchConn.execute("CALL DOLT_COMMIT('-m', ?)", [
-            `init: ${agent.personaId} baseline — social=${agent.social.toFixed(1)} planetary=${agent.planetary.toFixed(1)}`
-          ])
-        })
       }
     } catch (branchErr) {
       console.error('Branch creation failed — cleaning up game rows:', branchErr)
