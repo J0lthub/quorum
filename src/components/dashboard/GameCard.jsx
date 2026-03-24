@@ -14,7 +14,7 @@ function getScoreInfo(scores) {
   const vals = Object.values(scores)
   const inZone = vals.filter(s => s.social >= ZONE_THRESHOLD && s.planetary >= ZONE_THRESHOLD)
   if (inZone.length === 0) {
-    // check if any are borderline (either score 50-60)
+    // amber if both scores are in borderline range (>=50 on each axis, below zone threshold)
     const borderline = vals.filter(s => (s.social >= BORDERLINE_THRESHOLD && s.planetary >= BORDERLINE_THRESHOLD))
     const tier = borderline.length > 0 ? 'amber' : 'red'
     return { best: null, label: 'out of zone', tier }

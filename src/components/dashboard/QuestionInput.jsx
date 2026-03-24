@@ -48,7 +48,7 @@ export default function QuestionInput({ onSubmit }) {
             type="submit"
             disabled={!value.trim()}
           >
-            Start Game →
+            Choose Personas →
           </button>
         </div>
       </form>

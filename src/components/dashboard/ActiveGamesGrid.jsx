@@ -5,6 +5,7 @@ import styles from './ActiveGamesGrid.module.css'
 
 export default function ActiveGamesGrid() {
   const [games, setGames] = useState(null)
+  const [error, setError] = useState(null)
   const inFlightRef = useRef(false)
 
   useEffect(() => {
@@ -15,6 +16,8 @@ export default function ActiveGamesGrid() {
       inFlightRef.current = true
       fetchGames().then(data => {
         if (!cancelled) setGames(data)
+      }).catch(err => {
+        if (!cancelled) setError('Failed to load games.')
       }).finally(() => { inFlightRef.current = false })
     }
 
@@ -30,6 +33,7 @@ export default function ActiveGamesGrid() {
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle}>Active Games</h2>
+      {error && <span>{error}</span>}
       <div className={styles.grid}>
         {games === null
           ? Array.from({ length: 4 }).map((_, i) => <GameCardShimmer key={i} />)

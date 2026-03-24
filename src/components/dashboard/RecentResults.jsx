@@ -27,7 +27,7 @@ export default function RecentResults() {
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle}>Recent Results</h2>
-      {error && <span>{error}</span>}
+      {error && <span className={styles.error}>{error}</span>}
       <div className={styles.strip}>
         {isLoading
           ? <span>Loading…</span>
@@ -56,7 +56,7 @@ export default function RecentResults() {
                     <span className={styles.score}>{result.habitableScore.toFixed(1)}</span>
                     {result.diffUrl && result.diffUrl !== '#'
                       ? <a href={result.diffUrl} className={styles.diffLink}>diff</a>
-                      : <button className={styles.diffLink} title="Diff viewer coming soon" onClick={e => e.preventDefault()}>diff</button>
+                      : <button className={styles.diffLink} title="Diff viewer coming soon">diff</button>
                     }
                     <span className={styles.hash}>{result.commitHash}</span>
                   </div>

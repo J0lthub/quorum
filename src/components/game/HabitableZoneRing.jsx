@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { ZONE_THRESHOLD } from '../../utils/scoring'
 import styles from './HabitableZoneRing.module.css'
 
 const TICKS = [0, 20, 40, 60, 80, 100]
@@ -46,8 +47,8 @@ export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
       </text>
 
       {/* Threshold lines */}
-      <line x1="290" y1="50" x2="290" y2="450" className={styles.thresholdLine} />
-      <line x1="50" y1="210" x2="450" y2="210" className={styles.thresholdLine} />
+      <line x1={toX(ZONE_THRESHOLD)} y1="50" x2={toX(ZONE_THRESHOLD)} y2="450" className={styles.thresholdLine} />
+      <line x1="50" y1={toY(ZONE_THRESHOLD)} x2="450" y2={toY(ZONE_THRESHOLD)} className={styles.thresholdLine} />
 
       {/* Axes */}
       <line x1="50" y1="450" x2="450" y2="450" className={styles.axisLine} />

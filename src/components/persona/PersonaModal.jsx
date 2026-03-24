@@ -76,11 +76,11 @@ export default function PersonaModal({ question, onClose }) {
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <p className={styles.subTitle}>
+        <p id="persona-modal-desc" className={styles.subTitle}>
           Select 2–5 personas ({selected.length}/5 selected)
         </p>
 
-        <div className={styles.grid} role="group" aria-label="Agent persona options">
+        <div className={styles.grid} role="group" aria-label="Agent persona options" aria-describedby="persona-modal-desc">
           {PERSONAS.map(persona => {
             const isSelected = selected.includes(persona.id)
             const isDisabled = selected.length >= 5 && !isSelected
