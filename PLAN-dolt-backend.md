@@ -130,6 +130,9 @@ run_sql "INSERT IGNORE INTO datasets (id, name, row_count, category, description
   ('ds-09', 'TfL-Open-2024',   8400, 'Transport',   'Transport for London open data 2024');
 "
 
+echo "==> Inspect dolt_diff_agent_scores column names (Dolt >= 1.x uses to_commit_hash; older uses to_commit)"
+run_sql "SHOW COLUMNS FROM dolt_diff_agent_scores;"
+
 echo "==> Initial Dolt commit"
 run_sql "CALL DOLT_ADD('.')"
 run_sql "CALL DOLT_COMMIT('-m', 'init: create schema and seed datasets')"
@@ -844,16 +847,21 @@ export async function finishGame(gameId) {
     return null
   }
 
-  // 2. UPDATE games + INSERT leaderboard + DOLT_ADD + DOLT_COMMIT — ALL on the
-  //    SAME dedicated connection. Mixing pool writes with a separate withBranch
-  //    commit leaves the pool connection's changes unstaged.
+  // 2. UPDATE games + INSERT leaderboard + DOLT_ADD + DOLT_COMMIT + read hash —
+  //    ALL on the SAME dedicated connection inside a single withBranch call.
+  //    Mixing pool writes with a separate withBranch commit leaves the pool
+  //    connection's changes unstaged.
   //    username comes from game.username (set at POST /api/games creation time),
   //    NOT from best.persona_id — those are different concepts.
   //
-  //    commitHash is read AFTER this block completes (see step 3 below).
-  //    Reading it before the finish commit would record the hash of the previous
-  //    commit, not the finish commit itself.
+  //    The commit_hash is obtained by calling SELECT DOLT_HASHOF('HEAD') on
+  //    the SAME conn immediately after DOLT_COMMIT — this is the finish commit
+  //    hash. Reading it from the pool after the block would require a separate
+  //    round-trip and risks a race; reading it before DOLT_COMMIT would return
+  //    the prior HEAD. Using DOLT_HASHOF('HEAD') on the same conn is the
+  //    simplest and most correct approach — no back-fill UPDATE needed.
   const lbId = nanoid()
+  let commitHash = ''
   await withBranch('main', async (conn) => {
     await conn.execute(
       "UPDATE games SET status = 'completed' WHERE id = ?", [gameId]
@@ -870,20 +878,21 @@ export async function finishGame(gameId) {
     await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
       `game ${gameId}: completed — winner ${best.persona_id} habitable=${best.habitable_score.toFixed(1)}`
     ])
+    // Read the finish commit hash on the SAME connection, immediately after
+    // DOLT_COMMIT. DOLT_HASHOF('HEAD') returns the hash that was just created.
+    // This avoids a second withBranch round-trip and requires no back-fill UPDATE.
+    const [[hashRow]] = await conn.execute("SELECT DOLT_HASHOF('HEAD') AS h")
+    commitHash = hashRow?.h ?? ''
+    // Now that we have the hash, update the leaderboard row on the same conn
+    // so it is staged and committed in the same transaction context.
+    await conn.execute(
+      'UPDATE leaderboard SET commit_hash = ? WHERE id = ?', [commitHash, lbId]
+    )
+    await conn.execute('CALL DOLT_ADD(?)', ['.'])
+    await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
+      `game ${gameId}: set leaderboard commit_hash`
+    ])
   })
-
-  // 3. Read the commit hash AFTER the finish commit so we capture the correct
-  //    HEAD. Reading before withBranch above would return the prior commit hash.
-  //    Pool is fine here — the finish commit is now the HEAD on main.
-  const [[logRow]] = await pool.execute(
-    'SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1'
-  )
-  const commitHash = logRow?.commit_hash ?? ''
-
-  // 4. Back-fill the commit_hash on the leaderboard row now that we know it.
-  await pool.execute(
-    'UPDATE leaderboard SET commit_hash = ? WHERE id = ?', [commitHash, lbId]
-  )
 
   return { lbId, best, commitHash }
 }
@@ -947,6 +956,8 @@ router.get('/:id/diff', async (req, res) => {
       const [toCommit, fromCommit] = commitLog  // newest first
 
       const changes = await withBranch(agent.branch_name, async (conn) => {
+        // column is 'to_commit_hash' in Dolt >= 1.x; change to 'to_commit' if you get unknown-column errors
+        // Run `SHOW COLUMNS FROM dolt_diff_agent_scores;` (done in init-dolt.sh) to confirm the actual name.
         const [rows] = await conn.execute(
           `SELECT
              diff_type,
@@ -957,7 +968,7 @@ router.get('/:id/diff', async (req, res) => {
              to_iteration,       from_iteration,
              to_commit_message
            FROM dolt_diff_agent_scores
-           WHERE to_commit = ?`,
+           WHERE to_commit_hash = ?`,
           [toCommit.commit_hash]
         )
         return rows
@@ -1160,6 +1171,13 @@ useEffect(() => {
     setAgentScores(g ? structuredClone(g.scores) : null)
     setIsLoading(false)
 
+    // If the game was already completed when loaded (e.g. page refresh on a
+    // finished game), do NOT start the tick interval. Mark it done immediately.
+    if (g?.status === 'completed') {
+      setGameStatus('completed')
+      return
+    }
+
     // Start the tick interval only after initial data has loaded.
     intervalRef.current = setInterval(async () => {
       try {
@@ -1200,7 +1218,19 @@ match the existing state variables in `useGame.js`. The key points are:
 - Check `result.completed === true` (strict equality) before clearing.
 
 **Return `gameStatus` from `useGame.js`** alongside the other returned values.
-In `GameView.jsx` (or wherever the status badge is rendered), use:
+The hook's return statement must explicitly include `gameStatus`:
+
+```js
+return { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus }
+```
+
+In `GameView.jsx` (or wherever `useGame` is called), destructure accordingly:
+
+```js
+const { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus } = useGame(gameId)
+```
+
+Then use `gameStatus` for immediate status updates:
 ```js
 const displayStatus = gameStatus ?? game?.status
 ```
@@ -1249,6 +1279,8 @@ Expected files to update (based on current project structure):
 - `src/components/dashboard/GameCard.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
 - `src/components/dashboard/LeaderboardSidebar.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
 - `src/components/game/ScorePanel.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
+- `src/components/dashboard/PersonaModal.jsx` (imports `PERSONAS` and `createGame` from `../../api/mock` — update both to `../../api/client`)
+- `src/components/dashboard/ActiveGamesGrid.jsx` (imports `fetchGames` from `../../api/mock` — update to `../../api/client`)
 - Any other component that calls `createGame`, `fetchGames`, `fetchLeaderboard`, `fetchRecent`
 
 Note: `client.js` already exports `PERSONAS` as a named constant (see the `export const PERSONAS` block
@@ -1468,10 +1500,13 @@ CALL DOLT_CHECKOUT('agent/scientist-01');
 SELECT commit_hash, message, date FROM dolt_log LIMIT 5;
 
 -- See what changed in last commit
--- NOTE: the column is `to_commit`, NOT `to_commit_hash`
-SELECT * FROM dolt_diff_agent_scores WHERE to_commit = (
+-- NOTE: Dolt >= 1.x uses `to_commit_hash`; older Dolt versions use `to_commit`.
+-- Run `SHOW COLUMNS FROM dolt_diff_agent_scores;` to confirm which column exists.
+SELECT * FROM dolt_diff_agent_scores WHERE to_commit_hash = (
   SELECT commit_hash FROM dolt_log LIMIT 1
 );
+-- If the above fails with unknown-column, try:
+-- SELECT * FROM dolt_diff_agent_scores WHERE to_commit = (SELECT commit_hash FROM dolt_log LIMIT 1);
 
 -- Merge agent branch back to main (future feature)
 CALL DOLT_CHECKOUT('main');
