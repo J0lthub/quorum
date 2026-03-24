@@ -54,7 +54,10 @@ export default function RecentResults() {
                       </span>
                     )}
                     <span className={styles.score}>{result.habitableScore.toFixed(1)}</span>
-                    <a href={result.diffUrl} className={styles.diffLink}>diff</a>
+                    {result.diffUrl && result.diffUrl !== '#'
+                      ? <a href={result.diffUrl} className={styles.diffLink}>diff</a>
+                      : <button className={styles.diffLink} title="Diff viewer coming soon" onClick={e => e.preventDefault()}>diff</button>
+                    }
                     <span className={styles.hash}>{result.commitHash}</span>
                   </div>
                 </div>

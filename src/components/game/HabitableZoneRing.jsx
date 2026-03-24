@@ -8,14 +8,14 @@ function toY(planetary) { return 450 - (planetary / 100) * 400 }
 
 export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
   const [isPulsing, setIsPulsing] = useState(false)
-  const prevBestRef = useRef(bestScore)
+  const prevBestRef = useRef(null)
 
   useEffect(() => {
     if (bestScore == null) {
       prevBestRef.current = null
       return
     }
-    if (prevBestRef.current === null || bestScore > prevBestRef.current) {
+    if (prevBestRef.current == null || bestScore > prevBestRef.current) {
       setIsPulsing(true)
     }
     prevBestRef.current = bestScore
@@ -25,6 +25,7 @@ export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
     <svg
       viewBox="0 0 500 500"
       className={styles.svg}
+      role="img"
       aria-label="Habitable Zone plot"
     >
       {/* Habitable zone fill */}

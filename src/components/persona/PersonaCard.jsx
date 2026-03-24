@@ -22,7 +22,7 @@ export default function PersonaCard({ persona, selected, isDisabled, onToggle })
       role="checkbox"
       aria-checked={selected}
       aria-disabled={isDisabled}
-      tabIndex={0}
+      tabIndex={isDisabled && !selected ? -1 : 0}
       onKeyDown={handleKeyDown}
     >
       <div className={styles.header}>

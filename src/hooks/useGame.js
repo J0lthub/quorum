@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchGame } from '../api/mock'
 import { isInZone, computeHabitableScore } from '../utils/scoring'
 
-function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)) }
+// structuredClone handles all serializable types; switch to custom clone if non-serializable data is added
+function deepCopy(obj) { return structuredClone(obj) }
 
 export function useGame(id) {
   const [game, setGame] = useState(null)
   const [agentScores, setAgentScores] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const intervalRef = useRef(null)
 
   useEffect(() => {
     setGame(null)
@@ -15,7 +17,6 @@ export function useGame(id) {
     setIsLoading(true)
 
     let cancelled = false
-    let intervalId = null
 
     fetchGame(id).then(g => {
       if (cancelled) return
@@ -25,7 +26,7 @@ export function useGame(id) {
 
       if (cancelled) return
       if (g !== null) {
-        intervalId = setInterval(() => {
+        intervalRef.current = setInterval(() => {
           setAgentScores(prev => {
             if (!prev) return prev
             const next = deepCopy(prev)
@@ -41,7 +42,7 @@ export function useGame(id) {
 
     return () => {
       cancelled = true
-      if (intervalId !== null) clearInterval(intervalId)
+      clearInterval(intervalRef.current)
     }
   }, [id])
 
@@ -54,5 +55,19 @@ export function useGame(id) {
       })()
     : null
 
-  return { game, agentScores, bestScore, isLoading }
+  const bestAgentId = agentScores
+    ? (() => {
+        let best = null
+        let bestVal = -Infinity
+        for (const [agentId, s] of Object.entries(agentScores)) {
+          if (isInZone(s.social, s.planetary)) {
+            const avg = (s.social + s.planetary) / 2
+            if (avg > bestVal) { bestVal = avg; best = agentId }
+          }
+        }
+        return best
+      })()
+    : null
+
+  return { game, agentScores, bestScore, bestAgentId, isLoading }
 }

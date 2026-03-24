@@ -7,6 +7,7 @@ export default function App() {
     <Routes>
       <Route path="/"          element={<Dashboard />} />
       <Route path="/game/:id"  element={<GameView />} />
+      <Route path="*"          element={<div style={{padding:'2rem',color:'var(--color-text-muted)'}}>Page not found.</div>} />
     </Routes>
   )
 }

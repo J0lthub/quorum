@@ -21,9 +21,8 @@ export default function PersonaModal({ question, onClose }) {
       return
     }
     if (e.key === 'Tab') {
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
-      )
+      const els = dialogRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      const focusable = [...els].filter(el => !el.disabled && !el.getAttribute('aria-disabled') && el.offsetParent !== null)
       if (focusable.length === 0) return
       const first = focusable[0]
       const last = focusable[focusable.length - 1]

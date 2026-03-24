@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PERSONAS } from '../../api/mock'
 import { elapsed } from '../../utils/elapsed'
+import { ZONE_THRESHOLD, BORDERLINE_THRESHOLD } from '../../utils/scoring'
 import styles from './GameCard.module.css'
 
 function getPersonaColor(personaId) {
@@ -11,10 +12,10 @@ function getPersonaColor(personaId) {
 function getScoreInfo(scores) {
   if (!scores) return { best: null, label: '—', tier: 'red' }
   const vals = Object.values(scores)
-  const inZone = vals.filter(s => s.social >= 60 && s.planetary >= 60)
+  const inZone = vals.filter(s => s.social >= ZONE_THRESHOLD && s.planetary >= ZONE_THRESHOLD)
   if (inZone.length === 0) {
     // check if any are borderline (either score 50-60)
-    const borderline = vals.filter(s => (s.social >= 50 && s.planetary >= 50))
+    const borderline = vals.filter(s => (s.social >= BORDERLINE_THRESHOLD && s.planetary >= BORDERLINE_THRESHOLD))
     const tier = borderline.length > 0 ? 'amber' : 'red'
     return { best: null, label: 'out of zone', tier }
   }
@@ -37,7 +38,7 @@ export default function GameCard({ game }) {
   const { best, label, tier } = getScoreInfo(game.scores)
   const inZoneAgents = game.agents.filter(agent => {
     const s = game.scores[agent.id]
-    return s && s.social >= 60 && s.planetary >= 60
+    return s && s.social >= ZONE_THRESHOLD && s.planetary >= ZONE_THRESHOLD
   })
   const candidateAgents = inZoneAgents.length > 0 ? inZoneAgents : game.agents
   const bestAgent = candidateAgents.reduce((acc, agent) => {

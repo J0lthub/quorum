@@ -37,7 +37,11 @@ export default function QuestionInput({ onSubmit }) {
           value={value}
           onChange={handleChange}
           rows={2}
+          maxLength={500}
         />
+        {value.length > 400 && (
+          <div className={styles.charCount}>{value.length}/500</div>
+        )}
         <div className={styles.footer}>
           <button
             className={styles.submitBtn}

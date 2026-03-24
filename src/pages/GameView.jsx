@@ -21,7 +21,7 @@ function enrichAgents(agents) {
 
 export default function GameView() {
   const { id } = useParams()
-  const { game, agentScores, bestScore, isLoading } = useGame(id)
+  const { game, agentScores, bestScore, bestAgentId, isLoading } = useGame(id)
 
   if (isLoading) {
     return (
@@ -46,21 +46,6 @@ export default function GameView() {
   }
 
   const enriched = enrichAgents(game.agents)
-
-  const bestAgentId = agentScores
-    ? (() => {
-        let best = null
-        let bestVal = -Infinity
-        for (const agent of game.agents) {
-          const s = agentScores[agent.id]
-          if (s && s.social >= 60 && s.planetary >= 60) {
-            const avg = (s.social + s.planetary) / 2
-            if (avg > bestVal) { bestVal = avg; best = agent.id }
-          }
-        }
-        return best
-      })()
-    : null
 
   return (
     <div className={styles.page}>

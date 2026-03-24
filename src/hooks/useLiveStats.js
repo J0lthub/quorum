@@ -25,6 +25,7 @@ export function useLiveStats() {
 
     return () => {
       cancelled = true
+      inFlightRef.current = false
       clearInterval(id)
     }
   }, [])

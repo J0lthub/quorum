@@ -28,7 +28,7 @@ export default function LeaderboardSidebar() {
   return (
     <aside className={styles.sidebar}>
       <h2 className={styles.title}>Leaderboard</h2>
-      {error && <span>Failed to load leaderboard.</span>}
+      {error && <span className={styles.error}>{error}</span>}
       {isLoading
         ? <span>Loading…</span>
         : !leaderboard ? null
