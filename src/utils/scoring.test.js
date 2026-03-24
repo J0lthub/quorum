@@ -21,6 +21,14 @@ describe('isInZone', () => {
   it('returns true when both scores are 100', () => {
     expect(isInZone(100, 100)).toBe(true)
   })
+
+  it('returns false when social is 60 but planetary is 59', () => {
+    expect(isInZone(60, 59)).toBe(false)
+  })
+
+  it('returns false when planetary is 60 but social is 59', () => {
+    expect(isInZone(59, 60)).toBe(false)
+  })
 })
 
 describe('computeHabitableScore', () => {
@@ -42,5 +50,13 @@ describe('computeHabitableScore', () => {
 
   it('returns null for out-of-zone scores', () => {
     expect(computeHabitableScore(40, 90)).toBeNull()
+  })
+
+  it('returns null when social is 60 but planetary is 59', () => {
+    expect(computeHabitableScore(60, 59)).toBeNull()
+  })
+
+  it('returns null when planetary is 60 but social is 59', () => {
+    expect(computeHabitableScore(59, 60)).toBeNull()
   })
 })

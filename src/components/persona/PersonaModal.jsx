@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PERSONAS, createGame } from '../../api/mock'
 import PersonaCard from './PersonaCard'
@@ -9,6 +9,37 @@ export default function PersonaModal({ question, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
+  const dialogRef = useRef(null)
+
+  useEffect(() => {
+    if (dialogRef.current) dialogRef.current.focus()
+  }, [])
+
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (e.key === 'Tab') {
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])')
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+  }
 
   function handleToggle(personaId) {
     setSelected(prev => {
@@ -36,7 +67,7 @@ export default function PersonaModal({ question, onClose }) {
 
   return (
     <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={styles.panel} role="dialog" aria-modal="true" aria-label="Select agent personas">
+      <div ref={dialogRef} tabIndex={-1} className={styles.panel} role="dialog" aria-modal="true" aria-label="Select agent personas" onKeyDown={handleKeyDown}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <h2 className={styles.title}>Choose Agent Personas</h2>

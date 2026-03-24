@@ -21,10 +21,8 @@ export default function QuestionInput({ onSubmit }) {
     if (!trimmed) return
     onSubmit(trimmed)
     setValue('')
-    if (e.target && e.target.elements) {
-      const textarea = textareaRef.current
-      if (textarea) textarea.style.height = 'auto'
-    }
+    const textarea = textareaRef.current
+    if (textarea) textarea.style.height = 'auto'
   }
 
   return (

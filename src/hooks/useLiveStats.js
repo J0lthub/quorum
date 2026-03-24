@@ -6,15 +6,21 @@ export function useLiveStats() {
 
   useEffect(() => {
     let cancelled = false
+    let inFlight = false
 
-    fetchLiveStats().then(data => {
-      if (!cancelled) setStats(data)
-    })
-
-    const id = setInterval(() => {
+    if (!inFlight) {
+      inFlight = true
       fetchLiveStats().then(data => {
         if (!cancelled) setStats(data)
-      })
+      }).finally(() => { inFlight = false })
+    }
+
+    const id = setInterval(() => {
+      if (inFlight) return
+      inFlight = true
+      fetchLiveStats().then(data => {
+        if (!cancelled) setStats(data)
+      }).finally(() => { inFlight = false })
     }, 5000)
 
     return () => {

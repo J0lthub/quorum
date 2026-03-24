@@ -165,7 +165,10 @@ export const MOCK_LIVE_STATS = { activeAgents: 47, totalCommits: 12843, datasets
 const LIVE_GAMES = new Map()
 
 export async function fetchGames() {
-  return new Promise(resolve => setTimeout(() => resolve([...LIVE_GAMES.values(), ...MOCK_GAMES]), 120))
+  return new Promise(resolve => setTimeout(() => {
+    const liveIds = new Set([...LIVE_GAMES.keys()])
+    resolve([...LIVE_GAMES.values(), ...MOCK_GAMES.filter(g => !liveIds.has(g.id))])
+  }, 120))
 }
 
 export async function fetchRecent() {
@@ -189,9 +192,9 @@ export async function fetchLeaderboard() {
 export async function fetchLiveStats() {
   return new Promise(resolve => setTimeout(() => {
     resolve({
-      activeAgents:  MOCK_LIVE_STATS.activeAgents  + Math.floor(Math.random() * 5 - 2),
+      activeAgents:  Math.max(0, MOCK_LIVE_STATS.activeAgents  + Math.floor(Math.random() * 5 - 2)),
       totalCommits:  MOCK_LIVE_STATS.totalCommits  + Math.floor(Math.random() * 10),
-      datasets:      MOCK_LIVE_STATS.datasets      + Math.floor(Math.random() * 3 - 1),
+      datasets:      Math.max(0, MOCK_LIVE_STATS.datasets      + Math.floor(Math.random() * 3 - 1)),
     })
   }, 120))
 }

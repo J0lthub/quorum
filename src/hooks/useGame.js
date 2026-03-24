@@ -15,7 +15,7 @@ export function useGame(id) {
     setIsLoading(true)
 
     let cancelled = false
-    let id_interval = null
+    let intervalId = null
 
     fetchGame(id).then(g => {
       if (cancelled) return
@@ -24,7 +24,7 @@ export function useGame(id) {
       setIsLoading(false)
 
       if (g !== null) {
-        id_interval = setInterval(() => {
+        intervalId = setInterval(() => {
           setAgentScores(prev => {
             if (!prev) return prev
             const next = deepCopy(prev)
@@ -40,15 +40,15 @@ export function useGame(id) {
 
     return () => {
       cancelled = true
-      if (id_interval !== null) clearInterval(id_interval)
+      if (intervalId !== null) clearInterval(intervalId)
     }
   }, [id])
 
   const bestScore = agentScores
     ? (() => {
         const inZoneScores = Object.values(agentScores)
-          .filter(s => s.social >= 60 && s.planetary >= 60)
-          .map(s => (s.social + s.planetary) / 2)
+          .filter(s => isInZone(s.social, s.planetary))
+          .map(s => computeHabitableScore(s.social, s.planetary))
         return inZoneScores.length > 0 ? Math.max(...inZoneScores) : null
       })()
     : null

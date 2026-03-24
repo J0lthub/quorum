@@ -29,8 +29,8 @@ export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
     >
       {/* Habitable zone fill */}
       <rect
-        x="290" y="50"
-        width="160" height="160"
+        x={toX(60)} y={toY(100)}
+        width={toX(100) - toX(60)} height={toY(60) - toY(100)}
         fill="rgba(76, 175, 110, 0.20)"
         className={`${styles.habitableZoneFill}${isPulsing ? ` ${styles.ringPulse}` : ''}`}
         onAnimationEnd={() => setIsPulsing(false)}

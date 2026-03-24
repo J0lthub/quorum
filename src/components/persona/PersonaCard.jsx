@@ -1,16 +1,29 @@
 import styles from './PersonaCard.module.css'
 
 export default function PersonaCard({ persona, selected, isDisabled, onToggle }) {
+  function handleClick() {
+    if (isDisabled && !selected) return
+    onToggle(persona.id)
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      if (isDisabled && !selected) return
+      onToggle(persona.id)
+    }
+  }
+
   return (
     <div
       className={`${styles.card} ${selected ? styles.selected : ''}`}
       style={{ '--personaColor': persona.color }}
-      onClick={() => onToggle(persona.id)}
+      onClick={handleClick}
       role="checkbox"
       aria-checked={selected}
       aria-disabled={isDisabled}
       tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(persona.id) } }}
+      onKeyDown={handleKeyDown}
     >
       <div className={styles.header}>
         <span className={styles.icon}>{persona.icon}</span>
