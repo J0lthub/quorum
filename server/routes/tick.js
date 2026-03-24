@@ -19,13 +19,8 @@ router.post('/:id/tick', async (req, res) => {
 
     const [agents] = await pool.execute('SELECT * FROM agents WHERE game_id = ?', [gameId])
 
-    const updatedScores = {}
-    const iterations = []
-
-    // Sequential loop — NOT Promise.all. Keeps peak connections to 2 regardless
-    // of agent count, preventing connection pool exhaustion on the Dolt server.
-    for (const agent of agents) {
-      // Latest score + last 3 decisions for this agent (for AI continuity)
+    // ── Phase 1: fetch all previous scores + history in parallel ─────────────
+    const agentData = await Promise.all(agents.map(async (agent) => {
       const [[prev]] = await pool.execute(
         `SELECT social_score, planetary_score, iteration
          FROM agent_scores WHERE agent_id = ? ORDER BY iteration DESC LIMIT 1`,
@@ -37,14 +32,18 @@ router.post('/:id/tick', async (req, res) => {
          ORDER BY iteration DESC LIMIT 3`,
         [agent.id]
       )
+      return {
+        agent,
+        prevSocial:    prev?.social_score    ?? 60,
+        prevPlanetary: prev?.planetary_score ?? 60,
+        newIteration:  (prev?.iteration ?? 0) + 1,
+        history:       historyRows.map(r => r.decision).reverse(),
+      }
+    }))
 
-      const prevSocial    = prev?.social_score    ?? 60
-      const prevPlanetary = prev?.planetary_score ?? 60
-      const newIteration  = (prev?.iteration ?? 0) + 1
-      const history       = historyRows.map(r => r.decision).reverse()
-
-      // Ask Claude what this persona would do next
-      const { decision, reasoning, socialDelta, planetaryDelta } = await generateDecision({
+    // ── Phase 2: all Claude calls in parallel ─────────────────────────────────
+    const decisions = await Promise.all(agentData.map(({ agent, prevSocial, prevPlanetary, newIteration, history }) =>
+      generateDecision({
         personaId:  agent.persona_id,
         question:   game.question,
         social:     prevSocial,
@@ -52,6 +51,15 @@ router.post('/:id/tick', async (req, res) => {
         iteration:  newIteration,
         history,
       })
+    ))
+
+    // ── Phase 3: Dolt writes sequentially (one dedicated connection at a time) ─
+    const updatedScores = {}
+    const iterations    = []
+
+    for (let i = 0; i < agents.length; i++) {
+      const { agent, prevSocial, prevPlanetary, newIteration } = agentData[i]
+      const { decision, reasoning, socialDelta, planetaryDelta } = decisions[i]
 
       const social    = clamp(prevSocial    + socialDelta,    0, 100)
       const planetary = clamp(prevPlanetary + planetaryDelta, 0, 100)
@@ -59,11 +67,8 @@ router.post('/:id/tick', async (req, res) => {
       const zone      = social >= 60 && planetary >= 60 ? 1 : 0
       const scoreId     = nanoid()
       const mainScoreId = nanoid()
+      const commitMsg   = `${agent.persona_id} (iter ${newIteration}): ${decision}`
 
-      // Commit message = the persona's decision (visible as Dolt diff on DoltHub)
-      const commitMsg = `${agent.persona_id} (iter ${newIteration}): ${decision}`
-
-      // (a) Write to agent's Dolt branch — this is the canonical per-persona history
       await withBranch(agent.branch_name, async (conn) => {
         await conn.execute(
           `INSERT INTO agent_scores
@@ -73,15 +78,12 @@ router.post('/:id/tick', async (req, res) => {
           [scoreId, agent.id, gameId, newIteration, social, planetary, habitable,
            zone, commitMsg, decision, reasoning]
         )
-        await conn.execute(
-          'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
-        )
+        await conn.execute('UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id])
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
       })
       pushBranch(agent.branch_name).catch(err => console.error('DoltHub push failed (agent branch):', err))
 
-      // (b) Mirror to main branch for leaderboard / stats queries
       await withBranch('main', async (conn) => {
         await conn.execute(
           `INSERT INTO agent_scores
@@ -96,19 +98,14 @@ router.post('/:id/tick', async (req, res) => {
       })
       pushBranch('main').catch(err => console.error('DoltHub push failed (main):', err))
 
-      updatedScores[agent.id] = {
-        social, planetary, habitable, iteration: newIteration, decision, reasoning,
-      }
-
+      updatedScores[agent.id] = { social, planetary, habitable, iteration: newIteration, decision, reasoning }
       iterations.push(newIteration)
     }
 
-    if (iterations.length === 0) {
-      return res.json({ scores: {}, completed: false })
-    }
+    if (iterations.length === 0) return res.json({ scores: {}, completed: false })
+
     let completed = false
-    const minIteration = Math.min(...iterations)
-    if (minIteration >= 10) {
+    if (Math.min(...iterations) >= 10) {
       await finishGame(gameId)
       completed = true
     }
