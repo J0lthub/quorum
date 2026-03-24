@@ -13,7 +13,7 @@ export default function TopBar() {
           {stats ? stats.activeAgents.toLocaleString() : '—'} agents
         </span>
         <span className={`${styles.chip} ${stats ? styles.loaded : ''}`}>
-          {stats ? stats.totalCommits.toLocaleString() : '—'} commits
+          {stats ? stats.totalIterations.toLocaleString() : '—'} iterations
         </span>
         <span className={`${styles.chip} ${stats ? styles.loaded : ''}`}>
           {stats ? stats.datasets : '—'} datasets

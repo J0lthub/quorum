@@ -34,10 +34,12 @@ async function buildGamePayloads(gameIds) {
   if (gameIds.length === 0) return []
 
   // Single JOIN: games + agents + latest agent_scores (correlated subquery for latest)
+  // iteration is computed from COUNT of agent_scores rows on main (accurate, no branch needed)
   const placeholders = gameIds.map(() => '?').join(', ')
   const [rows] = await pool.execute(
     `SELECT g.id AS game_id, g.question, g.status, g.created_at,
-            a.id AS agent_id, a.persona_id, a.branch_name, a.iteration,
+            a.id AS agent_id, a.persona_id, a.branch_name,
+            (SELECT COUNT(*) FROM agent_scores WHERE agent_id = a.id) AS iteration,
             s.social_score, s.planetary_score
      FROM games g
      LEFT JOIN agents a ON a.game_id = g.id
@@ -101,9 +103,16 @@ router.get('/', async (_req, res) => {
 // GET /api/games/:id
 router.get('/:id', async (req, res) => {
   try {
+    // Separate existence check from the agent/score join so a game with no
+    // agents returns the game object with agents:[] rather than a 404.
+    const [[gameRow]] = await pool.execute(
+      'SELECT id FROM games WHERE id = ?', [req.params.id]
+    )
+    if (!gameRow) return res.status(404).json({ error: 'Game not found' })
+
     const payloads = await buildGamePayloads([req.params.id])
-    if (!payloads.length) return res.status(404).json({ error: 'Game not found' })
-    res.json(payloads[0])
+    // buildGamePayloads always returns one entry when the game exists
+    res.json(payloads[0] ?? { id: req.params.id, agents: [], scores: {} })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
@@ -112,13 +121,19 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string, dataset?: string }
 router.post('/', async (req, res) => {
-  const { question, agents: personaIds, username = 'anonymous', dataset = '' } = req.body
+  // Destructure without defaults first so type guards can catch non-string values
+  // before the defaults would silently coerce them.
+  const { question, agents: personaIds, username: rawUsername, dataset: rawDataset } = req.body
 
-  // Type guards — must come before any .length access
+  // Type guards — must come before applying defaults
   if (typeof question !== 'string') return res.status(400).json({ error: 'question must be a string' })
   if (!Array.isArray(personaIds)) return res.status(400).json({ error: 'agents must be an array' })
-  if (username !== undefined && typeof username !== 'string') return res.status(400).json({ error: 'username must be a string' })
-  if (dataset !== undefined && typeof dataset !== 'string') return res.status(400).json({ error: 'dataset must be a string' })
+  if (rawUsername !== undefined && typeof rawUsername !== 'string') return res.status(400).json({ error: 'username must be a string' })
+  if (rawDataset !== undefined && typeof rawDataset !== 'string') return res.status(400).json({ error: 'dataset must be a string' })
+
+  // Apply defaults after type guards
+  const username = rawUsername ?? 'anonymous'
+  const dataset  = rawDataset  ?? ''
 
   if (!question || question.length > 500) return res.status(400).json({ error: 'question required, max 500 chars' })
   if (personaIds.length < 2 || personaIds.length > 5) return res.status(400).json({ error: 'select 2–5 personas' })
@@ -128,6 +143,10 @@ router.post('/', async (req, res) => {
   // Persona ID validation against the known list
   const invalid = personaIds.filter(id => !VALID_PERSONA_IDS.has(id))
   if (invalid.length) return res.status(400).json({ error: `Unknown personas: ${invalid.join(', ')}` })
+
+  // Duplicate persona check
+  const uniquePersonas = new Set(personaIds)
+  if (uniquePersonas.size !== personaIds.length) return res.status(400).json({ error: 'Duplicate personas are not allowed' })
 
   const gameId = nanoid()
 
@@ -207,6 +226,8 @@ router.post('/', async (req, res) => {
       }
     } catch (branchErr) {
       console.error('Branch creation failed — cleaning up game rows:', branchErr)
+      // Delete in FK-safe order: agent_scores → agents → games
+      await pool.execute('DELETE FROM agent_scores WHERE game_id = ?', [gameId])
       await pool.execute('DELETE FROM agents WHERE game_id = ?', [gameId])
       await pool.execute('DELETE FROM games WHERE id = ?', [gameId])
       return res.status(500).json({ error: 'Failed to create agent branches' })

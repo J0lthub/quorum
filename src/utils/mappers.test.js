@@ -68,4 +68,19 @@ describe('mapLeaderboardRow', () => {
     const mapped = mapLeaderboardRow(row)
     expect(mapped.bestScore).toBeNull()
   })
+
+  it('does not include raw snake_case fields', () => {
+    const result = mapLeaderboardRow({
+      winning_persona: 'scientist',
+      best_score: 75,
+      rank: 1,
+      username: 'alice',
+      question: 'Q',
+      dataset: 'DS',
+      created_at: '2026-01-01',
+      commit_hash: 'abc1234',
+    })
+    expect(result).not.toHaveProperty('winning_persona')
+    expect(result).not.toHaveProperty('best_score')
+  })
 })

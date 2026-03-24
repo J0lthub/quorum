@@ -15,6 +15,8 @@ dotenv.config()
 const app  = express()
 const PORT = process.env.SERVER_PORT ?? 3001
 
+// PROTOTYPE LIMITATION (issue 12): CORS_ORIGIN only accepts a single origin string.
+// For multi-origin support, pass an array or a function to cors({ origin: ... }).
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
 app.use(express.json())
 

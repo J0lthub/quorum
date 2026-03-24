@@ -36,6 +36,7 @@ export async function finishGame(gameId) {
   const [[gameData]] = await pool.execute(
     'SELECT question, username, dataset FROM games WHERE id = ?', [gameId]
   )
+  if (!gameData) return null
   const [[best]] = await pool.execute(
     `SELECT s.habitable_score, s.social_score, s.planetary_score, a.persona_id
      FROM agent_scores s
@@ -122,6 +123,12 @@ export async function finishGame(gameId) {
 }
 
 // POST /api/games/:id/finish  (manual trigger — also auto-called from tick at iteration 10)
+// PROTOTYPE LIMITATION (issue 13): The SELECT then finishGame() call here has a
+// TOCTOU window — a concurrent request could finish the game between the SELECT
+// and the UPDATE inside finishGame(). The UPDATE's WHERE status='active' guard
+// in finishGame() makes this safe at the DB level (only one caller wins), but
+// the second caller's HTTP response will include already:false when it should
+// arguably return already:true. Acceptable for a prototype.
 router.post('/:id/finish', async (req, res) => {
   const { id: gameId } = req.params
   try {

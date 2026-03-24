@@ -9,13 +9,13 @@ router.get('/', async (_req, res) => {
     const [[{ activeAgents }]] = await pool.execute(
       "SELECT COUNT(*) AS activeAgents FROM agents a JOIN games g ON a.game_id = g.id WHERE g.status = 'active'"
     )
-    const [[{ totalCommits }]] = await pool.execute(
-      'SELECT COUNT(*) AS totalCommits FROM agent_scores'
+    const [[{ totalIterations }]] = await pool.execute(
+      'SELECT COUNT(*) AS totalIterations FROM agent_scores WHERE agent_id IN (SELECT id FROM agents)'
     )
     const [[{ datasets }]] = await pool.execute(
       'SELECT COUNT(*) AS datasets FROM datasets'
     )
-    res.json({ activeAgents, totalCommits, datasets })
+    res.json({ activeAgents, totalIterations, datasets })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })

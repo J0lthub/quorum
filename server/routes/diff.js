@@ -3,6 +3,10 @@ import { pool, withBranch } from '../db.js'
 
 const router = Router()
 
+// Cache which column name works across Dolt versions so we don't retry every call.
+// Dolt >= 1.x uses 'to_commit_hash'; older versions use 'to_commit'.
+let diffCommitColumn = null  // null = not yet determined
+
 // GET /api/games/:id/diff
 router.get('/:id/diff', async (req, res) => {
   const { id: gameId } = req.params
@@ -29,9 +33,10 @@ router.get('/:id/diff', async (req, res) => {
 
         const [toCommit, fromCommit] = commitLog  // newest first
 
-        // Dolt 1.77 uses 'to_commit' (not 'to_commit_hash').
-        // Use 'to_commit' — confirmed via SHOW COLUMNS FROM dolt_diff_agent_scores in init-dolt.sh.
-        const [changes] = await conn.execute(
+        // Dolt version portability: some versions use 'to_commit', others use
+        // 'to_commit_hash'. Try the cached column name first; if it fails with an
+        // "unknown column" error, retry with the other name and cache the winner.
+        const buildDiffQuery = (col) =>
           `SELECT
              diff_type,
              to_social_score,    from_social_score,
@@ -41,9 +46,24 @@ router.get('/:id/diff', async (req, res) => {
              to_iteration,       from_iteration,
              to_commit_message
            FROM dolt_diff_agent_scores
-           WHERE to_commit = ?`,
-          [toCommit.commit_hash]
-        )
+           WHERE ${col} = ?`
+
+        let changes
+        const columnsToTry = diffCommitColumn
+          ? [diffCommitColumn]
+          : ['to_commit', 'to_commit_hash']
+
+        for (const col of columnsToTry) {
+          try {
+            ;[changes] = await conn.execute(buildDiffQuery(col), [toCommit.commit_hash])
+            diffCommitColumn = col  // cache the working column name
+            break
+          } catch (colErr) {
+            if (!colErr.message?.toLowerCase().includes('unknown column')) throw colErr
+            // Try the next candidate
+          }
+        }
+        if (!changes) changes = []
 
         diffs[agent.id] = {
           fromCommit: fromCommit.commit_hash,

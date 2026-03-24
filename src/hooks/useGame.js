@@ -44,7 +44,8 @@ export function useGame(gameId) {
           tickInFlightRef.current = true
           tickGame(gameId).then(result => {   // gameId — NOT `id`
             if (cancelled) return
-            setAgentScores(result.scores)            // update from server response, not local mutation
+            // Only update scores if the response contains data
+            if (result.scores && Object.keys(result.scores).length > 0) setAgentScores(result.scores)
             if (result.completed === true) {
               clearInterval(intervalRef.current)
               setGameStatus('completed')
