@@ -9,7 +9,7 @@ export default function PersonaCard({ persona, selected, onToggle }) {
       role="checkbox"
       aria-checked={selected}
       tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onToggle(persona.id) }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(persona.id) } }}
     >
       <div className={styles.header}>
         <span className={styles.icon}>{persona.icon}</span>

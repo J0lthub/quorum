@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react'
 import { fetchGame } from '../api/mock'
+import { isInZone, computeHabitableScore } from '../utils/scoring'
+
+export { isInZone, computeHabitableScore }
 
 function deepCopy(obj) { return JSON.parse(JSON.stringify(obj)) }
-
-// Returns (social + planetary) / 2 if both >= 60, otherwise null (outside zone)
-export function computeHabitableScore(social, planetary) {
-  if (social < 60 || planetary < 60) return null
-  return (social + planetary) / 2
-}
-
-// Returns true if agent is inside the habitable zone
-export function isInZone(social, planetary) { return social >= 60 && planetary >= 60 }
 
 export function useGame(id) {
   const [game, setGame] = useState(null)
@@ -27,7 +21,7 @@ export function useGame(id) {
     fetchGame(id).then(g => {
       if (cancelled) return
       setGame(g)
-      setAgentScores(deepCopy(g.scores))
+      setAgentScores(g ? deepCopy(g.scores) : null)
       setIsLoading(false)
     })
 

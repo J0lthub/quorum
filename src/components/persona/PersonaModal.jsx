@@ -7,6 +7,7 @@ import styles from './PersonaModal.module.css'
 export default function PersonaModal({ question, onClose }) {
   const [selected, setSelected] = useState([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const navigate = useNavigate()
 
   function handleToggle(personaId) {
@@ -22,11 +23,13 @@ export default function PersonaModal({ question, onClose }) {
   async function handleStart() {
     if (selected.length < 2 || loading) return
     setLoading(true)
+    setError(null)
     try {
       const game = await createGame({ question, agents: selected })
       navigate(`/game/${game.id}`)
     } catch (err) {
       console.error('createGame failed', err)
+      setError('Failed to start game. Please try again.')
       setLoading(false)
     }
   }
@@ -56,6 +59,8 @@ export default function PersonaModal({ question, onClose }) {
             />
           ))}
         </div>
+
+        {error && <p className={styles.error}>{error}</p>}
 
         <div className={styles.footer}>
           <div className={styles.teamPreview}>

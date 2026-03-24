@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PERSONAS } from '../../api/mock'
+import { elapsed } from '../../utils/elapsed'
 import styles from './GameCard.module.css'
 
 function getPersonaColor(personaId) {
@@ -13,7 +14,7 @@ function getScoreInfo(scores) {
   const inZone = vals.filter(s => s.social >= 60 && s.planetary >= 60)
   if (inZone.length === 0) {
     // check if any are borderline (either score 50-60)
-    const borderline = vals.filter(s => (s.social >= 50 || s.planetary >= 50))
+    const borderline = vals.filter(s => (s.social >= 50 && s.planetary >= 50))
     const tier = borderline.length > 0 ? 'amber' : 'red'
     return { best: null, label: 'out of zone', tier }
   }
@@ -21,15 +22,6 @@ function getScoreInfo(scores) {
   return { best, label: best.toFixed(1), tier: 'green' }
 }
 
-function elapsed(startedAt) {
-  const diff = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
-  const h = Math.floor(diff / 3600)
-  const m = Math.floor((diff % 3600) / 60)
-  const s = diff % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return `${m}m ${s}s`
-  return `${s}s`
-}
 
 export function GameCardShimmer() {
   return (
@@ -43,7 +35,12 @@ export function GameCardShimmer() {
 
 export default function GameCard({ game }) {
   const { best, label, tier } = getScoreInfo(game.scores)
-  const bestAgent = game.agents.reduce((acc, agent) => {
+  const inZoneAgents = game.agents.filter(agent => {
+    const s = game.scores[agent.id]
+    return s && s.social >= 60 && s.planetary >= 60
+  })
+  const candidateAgents = inZoneAgents.length > 0 ? inZoneAgents : game.agents
+  const bestAgent = candidateAgents.reduce((acc, agent) => {
     const s = game.scores[agent.id]
     if (!s) return acc
     const score = (s.social + s.planetary) / 2

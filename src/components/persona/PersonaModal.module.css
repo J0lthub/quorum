@@ -164,3 +164,11 @@
   font-size: 12px;
   color: var(--color-muted);
 }
+
+.error {
+  padding: 8px 24px;
+  font-size: 12px;
+  color: var(--color-red, #e05c5c);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}

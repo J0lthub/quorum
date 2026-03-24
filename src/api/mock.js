@@ -87,9 +87,9 @@ export const MOCK_GAMES = [
     id: 'g-005',
     question: 'How should cities price road access to cut congestion and fund transit equitably?',
     agents: [
-      { id: 'a-014', personaId: 'equity_analyst',  branch: 'agent/equity_analyst-01',  iteration: 0 },
-      { id: 'a-015', personaId: 'engineer',         branch: 'agent/engineer-01',         iteration: 0 },
-      { id: 'a-016', personaId: 'commons_steward',  branch: 'agent/commons_steward-01',  iteration: 0 },
+      { id: 'a-014', personaId: 'equity_analyst',  branch: 'agent/equity_analyst-02',  iteration: 0 },
+      { id: 'a-015', personaId: 'engineer',         branch: 'agent/engineer-02',         iteration: 0 },
+      { id: 'a-016', personaId: 'commons_steward',  branch: 'agent/commons_steward-02',  iteration: 0 },
     ],
     scores: {
       'a-014': { social: 88, planetary: 66 },

@@ -5,7 +5,7 @@ export default function QuestionInput({ onSubmit }) {
   const [value, setValue] = useState('')
   const textareaRef = useRef(null)
 
-  function handleInput(e) {
+  function handleChange(e) {
     setValue(e.target.value)
     // Auto-grow
     const el = textareaRef.current
@@ -20,6 +20,11 @@ export default function QuestionInput({ onSubmit }) {
     const trimmed = value.trim()
     if (!trimmed) return
     onSubmit(trimmed)
+    setValue('')
+    if (e.target && e.target.elements) {
+      const textarea = textareaRef.current
+      if (textarea) textarea.style.height = 'auto'
+    }
   }
 
   return (
@@ -31,8 +36,7 @@ export default function QuestionInput({ onSubmit }) {
           className={styles.textarea}
           placeholder="Ask a question about the world..."
           value={value}
-          onInput={handleInput}
-          onChange={handleInput}
+          onChange={handleChange}
           rows={2}
         />
         <div className={styles.footer}>
