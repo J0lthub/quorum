@@ -35,19 +35,25 @@ export function useGame(gameId) {
       if (cancelled) return
       if (g !== null) {
         // Start the tick interval only after initial data has loaded.
-        intervalRef.current = setInterval(async () => {
-          try {
-            const result = await tickGame(gameId)   // gameId — NOT `id`
+        let tickInFlight = false
+        intervalRef.current = setInterval(() => {
+          if (tickInFlight) return
+          tickInFlight = true
+          tickGame(gameId).then(result => {   // gameId — NOT `id`
             setAgentScores(result.scores)            // update from server response, not local mutation
             if (result.completed === true) {
               clearInterval(intervalRef.current)
               setGameStatus('completed')
             }
-          } catch (err) {
+          }).catch(err => {
             console.error('tick failed', err)
-          }
+          }).finally(() => {
+            tickInFlight = false
+          })
         }, 2000)
       }
+    }).catch(err => {
+      if (!cancelled) setIsLoading(false)
     })
 
     return () => {

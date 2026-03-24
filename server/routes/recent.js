@@ -25,19 +25,13 @@ router.get('/', async (_req, res) => {
         [game.id]
       )
 
-      // Get the most recent commit hash on main for this game.
-      // Do NOT use .catch(() => [[null]]) — that silently swallows real DB
-      // errors and prevents the Express error handler from returning a 500.
-      // Instead, check whether the query returned a row and fall back to null
-      // gracefully when no matching log entry exists.
-      const [logRows] = await pool.execute(
-        `SELECT commit_hash FROM dolt_log
-         WHERE message LIKE ?
-         ORDER BY date DESC LIMIT 1`,
-        [`%${game.id}%`]
+      // Get the commit hash stored by finishGame in the leaderboard table.
+      // This is more reliable than the fragile dolt_log LIKE query.
+      const [lbRows] = await pool.execute(
+        'SELECT commit_hash FROM leaderboard WHERE game_id = ? LIMIT 1',
+        [game.id]
       )
-      const logRow = logRows[0]  // undefined when no matching row — not an error
-      const commitHash = logRow ? logRow.commit_hash : null
+      const commitHash = lbRows[0]?.commit_hash ?? null
 
       // Skip games where no in-zone agent exists (best is undefined/null) to
       // prevent `habitableScore.toFixed` TypeError on the client.

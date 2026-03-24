@@ -76,9 +76,8 @@ router.get('/:id', async (req, res) => {
 // POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string }
 router.post('/', async (req, res) => {
   const { question, agents: personaIds, username = 'anonymous' } = req.body
-  if (!question || !Array.isArray(personaIds) || personaIds.length === 0) {
-    return res.status(400).json({ error: 'question and agents[] are required' })
-  }
+  if (!question || question.length > 500) return res.status(400).json({ error: 'question required, max 500 chars' })
+  if (!personaIds || personaIds.length < 2 || personaIds.length > 5) return res.status(400).json({ error: 'select 2–5 personas' })
 
   const gameId = nanoid()
 
@@ -98,12 +97,8 @@ router.post('/', async (req, res) => {
 
       // Step 2: Insert all agent and initial score rows
       for (const personaId of personaIds) {
-        const [[{ cnt }]] = await conn.execute(
-          'SELECT COUNT(*) AS cnt FROM agents WHERE persona_id = ?', [personaId]
-        )
-        const seq        = String(parseInt(cnt) + 1).padStart(2, '0')
-        const branchName = `agent/${personaId}-${seq}`
         const agentId    = nanoid()
+        const branchName = `agent/${personaId}-${agentId.slice(0, 8)}`
 
         await conn.execute(
           'INSERT INTO agents (id, game_id, persona_id, branch_name, iteration) VALUES (?,?,?,?,0)',

@@ -44,7 +44,8 @@ router.post('/:id/tick', async (req, res) => {
       const planetary = perturb(prevPlanetary)
       const habitable = (social + planetary) / 2
       const zone      = inZone(social, planetary) ? 1 : 0
-      const scoreId   = nanoid()
+      const scoreId     = nanoid()
+      const mainScoreId = nanoid()
 
       const commitMsg = [
         `${agent.persona_id} iteration ${newIteration}:`,
@@ -83,7 +84,7 @@ router.post('/:id/tick', async (req, res) => {
           `INSERT INTO agent_scores
              (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
            VALUES (?,?,?,?,?,?,?,?,?)`,
-          [scoreId, agent.id, gameId, newIteration, social, planetary, habitable, zone, commitMsg]
+          [mainScoreId, agent.id, gameId, newIteration, social, planetary, habitable, zone, commitMsg]
         )
         await conn.execute(
           'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
@@ -103,6 +104,9 @@ router.post('/:id/tick', async (req, res) => {
     // Use minIteration (Math.min) — not maxIteration — so we wait for the
     // slowest agent. Using max would trigger finish as soon as any single
     // agent hit 10, potentially before others have run all their ticks.
+    if (iterations.length === 0) {
+      return res.json({ scores: {}, completed: false })
+    }
     let completed = false
     const minIteration = Math.min(...iterations)
     if (minIteration >= 10) {

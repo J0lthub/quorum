@@ -24,11 +24,14 @@ const router = Router()
  * which is fine because those rows were already committed by tick.js.
  */
 export async function finishGame(gameId) {
+  const [[game]] = await pool.execute('SELECT status FROM games WHERE id = ?', [gameId])
+  if (!game || game.status === 'completed') return null
+
   // 1. Read game metadata and find the best in-zone agent BEFORE opening the
   //    write connection. These are read-only queries on already-committed data.
   //    Using pool here is safe because tick.js has finished its withBranch
   //    commits before calling finishGame.
-  const [[game]] = await pool.execute(
+  const [[gameData]] = await pool.execute(
     'SELECT question, username FROM games WHERE id = ?', [gameId]
   )
   const [[best]] = await pool.execute(
@@ -77,8 +80,8 @@ export async function finishGame(gameId) {
       `INSERT INTO leaderboard
          (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
        VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
-      [lbId, game.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
-       game.question, '']
+      [lbId, gameData.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
+       gameData.question, '']
     )
     // DOLT_ADD and DOLT_COMMIT on the same conn — staging sees both the UPDATE and INSERT
     await conn.execute('CALL DOLT_ADD(?)', ['.'])

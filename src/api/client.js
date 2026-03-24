@@ -2,7 +2,10 @@ const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:3001'
 
 async function get(path) {
   const res = await fetch(`${BASE}${path}`)
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? `GET ${path} failed: ${res.status}`)
+  }
   return res.json()
 }
 
@@ -12,33 +15,36 @@ async function post(path, body) {
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`)
+  if (!res.ok) {
+    const respBody = await res.json().catch(() => ({}))
+    throw new Error(respBody.error ?? `POST ${path} failed: ${res.status}`)
+  }
   return res.json()
 }
 
 // ─── snake_case → camelCase helpers ────────────────────────────────────────
 
 /** Map a leaderboard row (snake_case from MySQL) to camelCase for the client. */
-function mapLeaderboardRow(row) {
-  return {
-    ...row,
-    rank:           row.rank,           // computed by ROW_NUMBER() in the query
-    winningPersona: row.winning_persona,
-    bestScore:      row.best_score,
-    commitHash:     row.commit_hash,
-    createdAt:      row.created_at,
-  }
-}
+const mapLeaderboardRow = row => ({
+  rank:           row.rank,
+  username:       row.username,
+  bestScore:      row.best_score,
+  winningPersona: row.winning_persona,
+  question:       row.question,
+  dataset:        row.dataset,
+  date:           row.created_at,
+  commitHash:     row.commit_hash,
+})
 
 /** Map a recent-results row (snake_case from MySQL) to camelCase for the client. */
-function mapRecentRow(row) {
-  return {
-    ...row,
-    winningPersona: row.winning_persona ?? row.winningPersona,
-    habitableScore: row.habitable_score  ?? row.habitableScore,
-    commitHash:     row.commit_hash      ?? row.commitHash,
-  }
-}
+const mapRecentRow = row => ({
+  id:             row.id,
+  question:       row.question,
+  winningPersona: row.winning_persona,
+  habitableScore: row.habitable_score,
+  commitHash:     row.commit_hash,
+  diffUrl:        row.diff_url ?? '#',
+})
 
 // ────────────────────────────────────────────────────────────────────────────
 
