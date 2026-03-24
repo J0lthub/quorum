@@ -1,6 +1,6 @@
 import { Router }     from 'express'
 import { nanoid }     from 'nanoid'
-import { pool, withBranch } from '../db.js'
+import { pool, withBranch, pushBranch } from '../db.js'
 
 const router = Router()
 
@@ -119,6 +119,8 @@ export async function finishGame(gameId) {
   })
 
   if (!finished) return null
+  // Push main to DoltHub so the completed game + leaderboard entry are public
+  pushBranch('main').catch(err => console.error('DoltHub push failed (finish):', err))
   return { lbId, best, commitHash }
 }
 

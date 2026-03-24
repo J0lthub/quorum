@@ -41,6 +41,20 @@ export async function withBranch(branch, fn) {
 }
 
 /**
+ * Push a branch to the DoltHub remote (origin) in the background.
+ * Fire-and-forget — callers should NOT await this; use .catch() only.
+ * Push failures are logged but never propagate to the HTTP response.
+ */
+export async function pushBranch(branchName) {
+  const conn = await mysql.createConnection(BASE_CONFIG)
+  try {
+    await conn.execute('CALL DOLT_PUSH(?, ?)', ['origin', branchName])
+  } finally {
+    await conn.end()
+  }
+}
+
+/**
  * Create a branch from the current HEAD of main.
  * Must only be called AFTER the parent rows (games, agents) have been
  * committed to main — otherwise the branch forks from a state that lacks

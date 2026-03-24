@@ -1,6 +1,6 @@
 import { Router }  from 'express'
 import { nanoid }  from 'nanoid'
-import { pool, withBranch } from '../db.js'
+import { pool, withBranch, pushBranch } from '../db.js'
 import { finishGame }       from './finish.js'
 
 const router = Router()
@@ -74,6 +74,8 @@ router.post('/:id/tick', async (req, res) => {
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
       })
+      // Push agent branch to DoltHub so each persona's decisions are visible as diffs
+      pushBranch(agent.branch_name).catch(err => console.error('DoltHub push failed (agent branch):', err))
 
       // agents.iteration is updated on the agent branch only. main-branch iteration is derived from COUNT(agent_scores) in buildGamePayloads.
       // (b) Write the same score row to main and commit it — main is the global
@@ -92,6 +94,8 @@ router.post('/:id/tick', async (req, res) => {
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
       })
+      // Push main index branch so DoltHub always has the latest aggregate view
+      pushBranch('main').catch(err => console.error('DoltHub push failed (main):', err))
 
       updatedScores[agent.id] = {
         social, planetary, habitable, iteration: newIteration,
