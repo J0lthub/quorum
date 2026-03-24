@@ -19,13 +19,19 @@
 
 .row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 10px 10px 12px;
   border-radius: 6px;
   background: var(--bg-elevated);
   border-left: 3px solid transparent;
   transition: border-color 0.2s;
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .row.best {
@@ -106,4 +112,28 @@
 
 .habitableScore.outside {
   color: var(--color-muted);
+}
+
+.decision {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  border-left: 2px solid var(--color-border);
+}
+
+.decisionLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+.decisionText {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.5;
 }

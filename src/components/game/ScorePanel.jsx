@@ -27,23 +27,31 @@ export default function ScorePanel({ agents, agentScores, bestAgentId }) {
             key={agent.id}
             className={`${styles.row} ${isBest ? styles.best : ''}`}
           >
-            <span className={styles.dot} style={{ background: color }} />
-            <span className={styles.name}>{name}</span>
-            {isBest && <span className={styles.bestBadge}>BEST</span>}
-            <div className={styles.scores}>
-              <div className={styles.scoreItem}>
-                <span className={styles.scoreLabel}>Social</span>
-                <span className={styles.scoreVal}>{score.social.toFixed(0)}</span>
+            <div className={styles.rowTop}>
+              <span className={styles.dot} style={{ background: color }} />
+              <span className={styles.name}>{name}</span>
+              {isBest && <span className={styles.bestBadge}>BEST</span>}
+              <div className={styles.scores}>
+                <div className={styles.scoreItem}>
+                  <span className={styles.scoreLabel}>Social</span>
+                  <span className={styles.scoreVal}>{score.social.toFixed(0)}</span>
+                </div>
+                <div className={styles.scoreItem}>
+                  <span className={styles.scoreLabel}>Planet</span>
+                  <span className={styles.scoreVal}>{score.planetary.toFixed(0)}</span>
+                </div>
               </div>
-              <div className={styles.scoreItem}>
-                <span className={styles.scoreLabel}>Planet</span>
-                <span className={styles.scoreVal}>{score.planetary.toFixed(0)}</span>
-              </div>
+              <span className={styles.zoneCheck}>{inZone ? '✓' : '✗'}</span>
+              <span className={`${styles.habitableScore} ${!inZone ? styles.outside : ''}`}>
+                {hScore != null ? hScore.toFixed(1) : '—'}
+              </span>
             </div>
-            <span className={styles.zoneCheck}>{inZone ? '✓' : '✗'}</span>
-            <span className={`${styles.habitableScore} ${!inZone ? styles.outside : ''}`}>
-              {hScore != null ? hScore.toFixed(1) : '—'}
-            </span>
+            {score.decision && (
+              <div className={styles.decision}>
+                <span className={styles.decisionLabel}>PROPOSES</span>
+                <span className={styles.decisionText}>{score.decision}</span>
+              </div>
+            )}
           </div>
         )
       })}
