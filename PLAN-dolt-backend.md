@@ -301,11 +301,12 @@ import { pool }   from '../db.js'
 
 const router = Router()
 
-// GET /api/leaderboard — top 10 by best_score desc
+// GET /api/leaderboard — top 10 by best_score desc, with rank computed at query time
 router.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT * FROM leaderboard ORDER BY best_score DESC LIMIT 10'
+      `SELECT *, ROW_NUMBER() OVER (ORDER BY best_score DESC) AS rank
+       FROM leaderboard ORDER BY best_score DESC LIMIT 10`
     )
     res.json(rows)
   } catch (err) {
@@ -323,8 +324,11 @@ export default router
 Returns the last 5 completed game scores in the shape expected by `RecentResults.jsx`:
 `{ id, question, winningPersona, habitableScore, commitHash, diffUrl }`.
 
-The `commitHash` is pulled from `dolt_log` on main. The `diffUrl` is `#` until a
-DoltHub integration is added.
+The `commitHash` is pulled from `dolt_log` on main. If no matching log entry exists,
+`commitHash` is `null` — this is not an error and is handled gracefully.
+Real DB errors propagate to the Express error handler (returned as 500) rather than
+being swallowed by a `.catch(() => [[null]])` pattern.
+The `diffUrl` is `#` until a DoltHub integration is added.
 
 ```js
 import { Router } from 'express'
@@ -354,15 +358,19 @@ router.get('/', async (_req, res) => {
         [game.id]
       )
 
-      // Get the most recent commit hash on main for this game
-      const [[logRow]] = await pool.execute(
+      // Get the most recent commit hash on main for this game.
+      // Do NOT use .catch(() => [[null]]) — that silently swallows real DB
+      // errors and prevents the Express error handler from returning a 500.
+      // Instead, check whether the query returned a row and fall back to null
+      // gracefully when no matching log entry exists.
+      const [logRows] = await pool.execute(
         `SELECT commit_hash FROM dolt_log
          WHERE message LIKE ?
          ORDER BY date DESC LIMIT 1`,
         [`%${game.id}%`]
-      ).catch(() => [[null]])
-
-      const commitHash = logRow?.commit_hash ?? ''
+      )
+      const logRow = logRows[0]  // undefined when no matching row — not an error
+      const commitHash = logRow ? logRow.commit_hash : null
 
       // Skip games where no in-zone agent exists (best is undefined/null) to
       // prevent `habitableScore.toFixed` TypeError on the client.
@@ -695,14 +703,24 @@ router.post('/:id/tick', async (req, res) => {
         `habitable=${habitable.toFixed(1)}`,
       ].join(' ')
 
-            // (a) Write to agent's Dolt branch and commit
+      // (a) Write to agent's Dolt branch and commit
       // Note: DOLT_COMMIT requires '-m' as a separate first argument
+      // (a) Write to agent's Dolt branch, bump the iteration counter on that
+      //     branch, and commit — all on the same connection so the UPDATE is
+      //     staged and versioned together with the agent_scores INSERT.
       await withBranch(agent.branch_name, async (conn) => {
         await conn.execute(
           `INSERT INTO agent_scores
              (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
            VALUES (?,?,?,?,?,?,?,?,?)`,
           [scoreId, agent.id, gameId, newIteration, social, planetary, habitable, zone, commitMsg]
+        )
+        // Move the iteration UPDATE inside this withBranch so it shares the
+        // same connection as the INSERT, DOLT_ADD, and DOLT_COMMIT.  A pool
+        // write outside would go through a different connection whose staging
+        // area is separate — the UPDATE would never be staged/committed.
+        await conn.execute(
+          'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
         )
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
@@ -712,6 +730,9 @@ router.post('/:id/tick', async (req, res) => {
       // index for leaderboard / stats queries. All writes to main MUST happen
       // inside withBranch so that DOLT_ADD and DOLT_COMMIT share the same
       // connection as the INSERT (each connection has its own staging area).
+      // The SELECT * FROM agents at the top of the tick loop uses the pool for
+      // a read — committed data is visible to all connections, so the iteration
+      // value written in step (a) will be readable via the pool on the next tick.
       await withBranch('main', async (conn) => {
         await conn.execute(
           `INSERT INTO agent_scores
@@ -719,15 +740,12 @@ router.post('/:id/tick', async (req, res) => {
            VALUES (?,?,?,?,?,?,?,?,?)`,
           [scoreId, agent.id, gameId, newIteration, social, planetary, habitable, zone, commitMsg]
         )
+        await conn.execute(
+          'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
+        )
         await conn.execute('CALL DOLT_ADD(?)', ['.'])
         await conn.execute("CALL DOLT_COMMIT('-m', ?)", [commitMsg])
       })
-
-      // Bump iteration counter on main (pool write does not need staging — it
-      // updates a non-versioned-in-this-tick row; committed in the next main write)
-      await pool.execute(
-        'UPDATE agents SET iteration = ? WHERE id = ?', [newIteration, agent.id]
-      )
 
       updatedScores[agent.id] = {
         social, planetary, habitable, iteration: newIteration,
@@ -826,17 +844,15 @@ export async function finishGame(gameId) {
     return null
   }
 
-  // 2. Get the current HEAD commit hash (read-only, pool is fine — committed data)
-  const [[logRow]] = await pool.execute(
-    'SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1'
-  )
-  const commitHash = logRow?.commit_hash ?? ''
-
-  // 3. UPDATE games + INSERT leaderboard + DOLT_ADD + DOLT_COMMIT — ALL on the
+  // 2. UPDATE games + INSERT leaderboard + DOLT_ADD + DOLT_COMMIT — ALL on the
   //    SAME dedicated connection. Mixing pool writes with a separate withBranch
   //    commit leaves the pool connection's changes unstaged.
   //    username comes from game.username (set at POST /api/games creation time),
   //    NOT from best.persona_id — those are different concepts.
+  //
+  //    commitHash is read AFTER this block completes (see step 3 below).
+  //    Reading it before the finish commit would record the hash of the previous
+  //    commit, not the finish commit itself.
   const lbId = nanoid()
   await withBranch('main', async (conn) => {
     await conn.execute(
@@ -845,9 +861,9 @@ export async function finishGame(gameId) {
     await conn.execute(
       `INSERT INTO leaderboard
          (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
       [lbId, game.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
-       game.question, '', commitHash]
+       game.question, '']
     )
     // DOLT_ADD and DOLT_COMMIT on the same conn — staging sees both the UPDATE and INSERT
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
@@ -855,6 +871,19 @@ export async function finishGame(gameId) {
       `game ${gameId}: completed — winner ${best.persona_id} habitable=${best.habitable_score.toFixed(1)}`
     ])
   })
+
+  // 3. Read the commit hash AFTER the finish commit so we capture the correct
+  //    HEAD. Reading before withBranch above would return the prior commit hash.
+  //    Pool is fine here — the finish commit is now the HEAD on main.
+  const [[logRow]] = await pool.execute(
+    'SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1'
+  )
+  const commitHash = logRow?.commit_hash ?? ''
+
+  // 4. Back-fill the commit_hash on the leaderboard row now that we know it.
+  await pool.execute(
+    'UPDATE leaderboard SET commit_hash = ? WHERE id = ?', [commitHash, lbId]
+  )
 
   return { lbId, best, commitHash }
 }
@@ -1002,6 +1031,7 @@ async function post(path, body) {
 function mapLeaderboardRow(row) {
   return {
     ...row,
+    rank:           row.rank,           // computed by ROW_NUMBER() in the query
     winningPersona: row.winning_persona,
     bestScore:      row.best_score,
     commitHash:     row.commit_hash,
@@ -1113,32 +1143,54 @@ import { tickGame, fetchGame } from '../api/client.js'
 const [gameStatus, setGameStatus] = useState(null)
 const intervalRef = useRef(null)
 
-// Inside useEffect (replace the entire interval block):
-// Dependency array uses `gameId` — the same variable used in fetchGame above.
+// Inside useEffect — mirror the existing structure exactly:
+// 1. Set isLoading true immediately.
+// 2. Fetch the game; only start the interval INSIDE the .then() callback,
+//    after data has arrived and state has been set.
+// 3. The interval must not start before setGame / setAgentScores have run —
+//    starting it outside .then() causes ticks to fire before data loads,
+//    leaving agentScores null and the spinner stuck.
 useEffect(() => {
-  // initial fetch
-  fetchGame(gameId).then(setGame)
+  let cancelled = false
+  setIsLoading(true)
 
-  intervalRef.current = setInterval(async () => {
-    try {
-      const result = await tickGame(gameId)   // gameId — NOT `id`
-      setAgentScores(result.scores)           // update from server response, not local mutation
-      if (result.completed === true) {
-        clearInterval(intervalRef.current)
-        setGameStatus('completed')
+  fetchGame(gameId).then(g => {
+    if (cancelled) return
+    setGame(g)
+    setAgentScores(g ? structuredClone(g.scores) : null)
+    setIsLoading(false)
+
+    // Start the tick interval only after initial data has loaded.
+    intervalRef.current = setInterval(async () => {
+      try {
+        const result = await tickGame(gameId)   // gameId — NOT `id`
+        setAgentScores(result.scores)           // update from server response, not local mutation
+        if (result.completed === true) {
+          clearInterval(intervalRef.current)
+          setGameStatus('completed')
+        }
+      } catch (err) {
+        console.error('tick failed', err)
       }
-    } catch (err) {
-      console.error('tick failed', err)
-    }
-  }, 2000)
+    }, 2000)
+  })
 
-  // The useEffect cleanup MUST clear the interval to prevent leaks on unmount:
-  return () => { clearInterval(intervalRef.current) }
+  // The useEffect cleanup MUST clear the interval and cancel the fetch
+  // to prevent state updates after unmount:
+  return () => {
+    cancelled = true
+    clearInterval(intervalRef.current)
+  }
 }, [gameId])  // <-- dependency array uses `gameId`, not `id`
 ```
 
-The exact state setter names (`setAgentScores`, `setGame`) should match the existing
-state variables in `useGame.js`. The key points are:
+The exact state setter names (`setAgentScores`, `setGame`, `setIsLoading`) should
+match the existing state variables in `useGame.js`. The key points are:
+- Set `setIsLoading(true)` at the top of the effect, before the fetch.
+- Start the interval INSIDE `.then()` after state is set — not at the top level
+  of the effect. Starting it before data arrives keeps `isLoading` true forever
+  because `setIsLoading(false)` is only called inside the `.then()`.
+- Use a `cancelled` flag to avoid state updates after the component unmounts.
 - The hook parameter must be `gameId` (rename from `id` if needed, update all refs).
 - No local score mutation — all score state comes from `result.scores`.
 - Use `intervalRef.current` (not a local `const interval`) so the cleanup
@@ -1192,8 +1244,16 @@ Expected files to update (based on current project structure):
 - `src/hooks/useLiveStats.js`
 - `src/hooks/useGame.js` (import path change + interval logic change — see above)
 - `src/pages/Dashboard.jsx`
+- `src/pages/GameView.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
 - `src/components/dashboard/RecentResults.jsx` (import path change + null guard — see above)
-- Any component that calls `createGame`, `fetchGames`, `fetchLeaderboard`, `fetchRecent`
+- `src/components/dashboard/GameCard.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
+- `src/components/dashboard/LeaderboardSidebar.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
+- `src/components/game/ScorePanel.jsx` (imports `PERSONAS` from `../../api/mock` — update to `../../api/client`)
+- Any other component that calls `createGame`, `fetchGames`, `fetchLeaderboard`, `fetchRecent`
+
+Note: `client.js` already exports `PERSONAS` as a named constant (see the `export const PERSONAS` block
+in `src/api/client.js` above). No additional change to `client.js` is needed — the export is already
+there, just sourced from the constant definition in `client.js` rather than from `mock.js`.
 
 ---
 
