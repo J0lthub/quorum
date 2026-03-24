@@ -37,12 +37,15 @@ export async function finishGame(gameId) {
     'SELECT question, username, dataset FROM games WHERE id = ?', [gameId]
   )
   if (!gameData) return null
+  // Winner = agent whose final in-zone score is closest to the midline (habitable=70).
+  // Zone score = 100 - |habitable - 70| * 4. Computed in SQL; highest zone score wins.
   const [[best]] = await pool.execute(
-    `SELECT s.habitable_score, s.social_score, s.planetary_score, a.persona_id
+    `SELECT s.habitable_score, s.social_score, s.planetary_score, a.persona_id,
+            (100 - ABS((s.social_score + s.planetary_score) / 2 - 70) * 4) AS zone_score
      FROM agent_scores s
      JOIN agents a ON s.agent_id = a.id
      WHERE s.game_id = ? AND s.is_in_zone = 1
-     ORDER BY s.habitable_score DESC
+     ORDER BY zone_score DESC
      LIMIT 1`,
     [gameId]
   )
@@ -102,7 +105,7 @@ export async function finishGame(gameId) {
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
     // (c) First commit — this is the "finish" commit
     await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
-      `game ${gameId}: completed — winner ${best.persona_id} habitable=${best.habitable_score.toFixed(1)}`
+      `game ${gameId}: completed — winner ${best.persona_id} zone=${best.zone_score?.toFixed(0) ?? '?'} habitable=${best.habitable_score.toFixed(1)}`
     ])
     // (d) Read the hash of the commit we just made
     const [[hashRow]] = await conn.execute("SELECT DOLT_HASHOF('HEAD') AS h")

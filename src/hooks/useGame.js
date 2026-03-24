@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { fetchGame, tickGame } from '../api/client.js'
-import { isInZone, computeHabitableScore } from '../utils/scoring'
+import { isInZone, computeHabitableScore, computeZoneScore } from '../utils/scoring'
 
 // structuredClone handles all serializable types; switch to custom clone if non-serializable data is added
 function deepCopy(obj) { return structuredClone(obj) }
@@ -67,23 +67,25 @@ export function useGame(gameId) {
     }
   }, [gameId])
 
+  // bestScore = highest zone score among in-zone agents (100 = perfectly on midline)
   const bestScore = agentScores
     ? (() => {
-        const inZoneScores = Object.values(agentScores)
+        const zoneScores = Object.values(agentScores)
           .filter(s => isInZone(s.social, s.planetary))
-          .map(s => computeHabitableScore(s.social, s.planetary))
-        return inZoneScores.length > 0 ? Math.max(...inZoneScores) : null
+          .map(s => computeZoneScore(s.social, s.planetary))
+        return zoneScores.length > 0 ? Math.max(...zoneScores) : null
       })()
     : null
 
+  // bestAgentId = agent closest to the habitable zone midline
   const bestAgentId = agentScores
     ? (() => {
         let best = null
         let bestVal = -Infinity
         for (const [agentId, s] of Object.entries(agentScores)) {
           if (isInZone(s.social, s.planetary)) {
-            const avg = (s.social + s.planetary) / 2
-            if (avg > bestVal) { bestVal = avg; best = agentId }
+            const z = computeZoneScore(s.social, s.planetary)
+            if (z > bestVal) { bestVal = z; best = agentId }
           }
         }
         return best

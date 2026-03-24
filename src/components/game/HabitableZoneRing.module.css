@@ -4,52 +4,103 @@
   display: block;
 }
 
-.axisLine {
-  stroke: var(--color-border);
-  stroke-width: 1;
+/* ── Background zones ──────────────────────────────────────────────────── */
+
+.outerZone {
+  /* Planetary overshoot: warm dark fill */
+  fill: color-mix(in srgb, #8b3a2a 18%, var(--bg-surface));
 }
 
-.thresholdLine {
-  stroke: var(--color-amber);
-  stroke-width: 1;
-  stroke-dasharray: 5 4;
-  opacity: 0.7;
+.innerZone {
+  /* Social deprivation: cool dark fill */
+  fill: color-mix(in srgb, #2a3a5a 25%, var(--bg-surface));
 }
 
-.habitableZoneFill {
-  /* base opacity via fill attribute */
+.habitableRing {
+  stroke: var(--color-green);
+  opacity: 0.13;
 }
 
 @keyframes ring-pulse {
-  0%   { opacity: 0.20; }
-  40%  { opacity: 0.50; }
-  100% { opacity: 0.20; }
+  0%   { opacity: 0.13; }
+  35%  { opacity: 0.35; }
+  100% { opacity: 0.13; }
 }
 
 .ringPulse {
-  animation: ring-pulse 1.2s ease-out forwards;
+  animation: ring-pulse 1.4s ease-out forwards;
 }
 
-.inZoneLabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  fill: var(--color-green);
-  opacity: 0.4;
-  letter-spacing: 0.15em;
+/* ── Boundary circles ──────────────────────────────────────────────────── */
+
+.socialBoundary {
+  stroke: var(--color-amber);
+  stroke-width: 1;
+  stroke-dasharray: 5 3;
+  opacity: 0.6;
 }
 
-.axisLabel {
+.midline {
+  stroke: var(--color-green);
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+.planetBoundary {
+  stroke: #64b5f6;
+  stroke-width: 1;
+  stroke-dasharray: 5 3;
+  opacity: 0.6;
+}
+
+/* ── Labels ─────────────────────────────────────────────────────────────── */
+
+.boundaryLabel {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 7px;
   fill: var(--color-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.midlineLabel {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  fill: var(--color-green);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.centerLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: var(--color-green);
+  opacity: 0.25;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.tick {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+  opacity: 0.4;
 }
 
 .tickLabel {
   font-family: var(--font-mono);
   font-size: 8px;
   fill: var(--color-muted);
+  opacity: 0.5;
 }
 
+/* ── Agent dots ─────────────────────────────────────────────────────────── */
+
 .agentHalo {
-  opacity: 0.4;
+  opacity: 0.18;
+  transition: r 0.4s ease, opacity 0.4s ease;
+}
+
+.agentInZone {
+  filter: drop-shadow(0 0 6px currentColor);
 }

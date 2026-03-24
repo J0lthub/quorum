@@ -33,6 +33,20 @@ export async function generateDecision({ personaId, question, social, planetary,
     ? `\nYour last decisions:\n${history.slice(-3).map((d, i) => `  ${i + 1}. ${d}`).join('\n')}`
     : ''
 
+  const habitable = (social + planetary) / 2
+  const zoneScore = Math.max(0, 100 - Math.abs(habitable - 70) * 4)
+  const belowMidline = habitable < 70
+  const aboveMidline = habitable > 70
+  const inZone = social >= 60 && planetary >= 60
+
+  const positionHint = !inZone
+    ? `You are outside the habitable zone (social floor is 60, planetary floor is 60). Priority: bring both scores above 60.`
+    : belowMidline
+    ? `You are inside the zone but below the optimal midline (${habitable.toFixed(1)} vs target 70). The best solutions push both scores toward 70.`
+    : aboveMidline
+    ? `You are above the optimal midline (${habitable.toFixed(1)} vs target 70). The most habitable solutions find balance — ecological overshoot is as problematic as deprivation. Seek proposals that bring scores back toward the 70 equilibrium.`
+    : `You are near the optimal midline. Propose solutions that consolidate and deepen this balance.`
+
   const prompt = `You are ${personaDesc}.
 
 The question being explored is: "${question}"
@@ -40,17 +54,21 @@ The question being explored is: "${question}"
 Current scores after ${iteration} rounds:
 - Social score: ${social.toFixed(1)}/100 (measures human wellbeing, equity, community benefit)
 - Planetary score: ${planetary.toFixed(1)}/100 (measures ecological health, sustainability, planetary safety)
+- Habitable score: ${habitable.toFixed(1)}/100 (average of both — target is 70, the optimal midline)
+- Zone score: ${zoneScore.toFixed(0)}/100 (100 = perfectly centered on the habitable midline)
+
+${positionHint}
+
+THE GOAL: The absolute best solution lands both scores at a habitable score of 70 — perfectly centered on the habitable zone midline. This is not about maximising scores. A habitable score of 70 with both social and planetary above 60 is a better result than a habitable score of 90. The best ideas achieve deep, balanced wellbeing — not growth for its own sake.
 
 ${historyText}
 
-Propose ONE specific, concrete action or policy intervention you would advocate for next — something that fits your worldview and addresses the question. Make it specific enough to be debatable (not generic like "invest in renewables" but something like "require all new buildings >500m² to install rooftop solar with mandatory grid feed-in by 2027").
-
-Then estimate the realistic impact on scores: your proposed action may help one dimension more than the other, or have trade-offs.
+Propose ONE specific, concrete action or policy intervention that moves scores toward the 70 optimal. Make it specific and debatable (not "invest in renewables" but "mandate solar canopies on all municipal car parks, feeding directly into a public energy cooperative by 2026").
 
 Respond in this exact JSON format (no other text):
 {
   "decision": "one concrete sentence describing what you propose",
-  "reasoning": "one sentence explaining why this fits your perspective",
+  "reasoning": "one sentence explaining why this achieves deep, balanced habitability",
   "socialDelta": <number from -8 to +8>,
   "planetaryDelta": <number from -8 to +8>
 }`

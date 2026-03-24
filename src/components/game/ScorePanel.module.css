@@ -150,6 +150,13 @@
 
 .habitableScore.outside { color: var(--color-muted); }
 
+.hintLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
 .decision {
   padding: 4px 6px;
   background: var(--bg-surface);

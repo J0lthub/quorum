@@ -1,5 +1,5 @@
 import { PERSONAS } from '../../api/client.js'
-import { isInZone, computeHabitableScore } from '../../utils/scoring'
+import { isInZone, computeHabitableScore, computeZoneScore } from '../../utils/scoring'
 import styles from './ScorePanel.module.css'
 
 function getPersona(personaId) {
@@ -18,7 +18,7 @@ export default function ScorePanel({ agents, agentScores, bestAgentId, selectedA
         {count > 0 && (
           <span className={styles.selectCount}>{count}/5 in chart</span>
         )}
-        <span className={styles.hint}>click to compare</span>
+        <span className={styles.hint}>zone score / habitable</span>
       </div>
       {agents.map(agent => {
         const score = agentScores[agent.id]
@@ -28,6 +28,7 @@ export default function ScorePanel({ agents, agentScores, bestAgentId, selectedA
         const name       = persona?.name  || agent.personaId
         const inZone     = isInZone(score.social, score.planetary)
         const hScore     = computeHabitableScore(score.social, score.planetary)
+        const zScore     = computeZoneScore(score.social, score.planetary)
         const isBest     = agent.id === bestAgentId
         const isSelected = selectedAgentIds.includes(agent.id)
         const atMax      = count >= 5 && !isSelected
@@ -55,8 +56,13 @@ export default function ScorePanel({ agents, agentScores, bestAgentId, selectedA
               </div>
               <span className={styles.zoneCheck}>{inZone ? '✓' : '✗'}</span>
               <span className={`${styles.habitableScore} ${!inZone ? styles.outside : ''}`}>
-                {hScore != null ? hScore.toFixed(1) : '—'}
+                {inZone ? `${zScore.toFixed(0)}` : '—'}
               </span>
+              {inZone && (
+                <span className={styles.hintLabel}>
+                  H{hScore?.toFixed(0)}
+                </span>
+              )}
             </div>
             {score.decision && (
               <div className={styles.decision}>
