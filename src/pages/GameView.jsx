@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PERSONAS } from '../api/client.js'
 import { useGame } from '../hooks/useGame'
@@ -6,6 +7,7 @@ import TopBar from '../components/layout/TopBar'
 import HabitableZoneRing from '../components/game/HabitableZoneRing'
 import AgentPointLegend from '../components/game/AgentPointLegend'
 import ScorePanel from '../components/game/ScorePanel'
+import AgentHistoryPanel from '../components/game/AgentHistoryPanel'
 import styles from './GameView.module.css'
 
 function enrichAgents(agents) {
@@ -22,6 +24,7 @@ function enrichAgents(agents) {
 export default function GameView() {
   const { id: gameId } = useParams()
   const { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus } = useGame(gameId)
+  const [selectedAgentId, setSelectedAgentId] = useState(null)
 
   if (isLoading) {
     return (
@@ -47,6 +50,7 @@ export default function GameView() {
 
   const enriched = enrichAgents(game.agents)
   const displayStatus = gameStatus ?? game?.status
+  const selectedAgent = enriched.find(a => a.id === selectedAgentId) ?? null
 
   return (
     <div className={styles.page}>
@@ -76,8 +80,18 @@ export default function GameView() {
             agents={enriched}
             agentScores={agentScores}
             bestAgentId={bestAgentId}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={setSelectedAgentId}
           />
         </div>
+
+        {selectedAgent && (
+          <AgentHistoryPanel
+            gameId={gameId}
+            agent={selectedAgent}
+            onClose={() => setSelectedAgentId(null)}
+          />
+        )}
       </div>
     </div>
   )

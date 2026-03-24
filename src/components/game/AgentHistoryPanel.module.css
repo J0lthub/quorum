@@ -1,0 +1,212 @@
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--bg-elevated);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+}
+
+.close {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+.close:hover { color: var(--color-text); }
+
+.chartWrap {
+  padding: 12px 14px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Selected iteration callout */
+.callout {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--bg-elevated);
+}
+
+.calloutHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.iterBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  background: var(--color-amber-dim);
+  color: var(--color-amber);
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.calloutScores {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+}
+.calloutScores strong {
+  color: var(--color-text);
+}
+
+.calloutDecision {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.55;
+  margin: 0 0 4px;
+}
+
+.calloutReasoning {
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Diff log */
+.diffLog {
+  overflow-y: auto;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.diffLogTitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 8px 14px 4px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+}
+
+.diffEntry {
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+  width: 100%;
+}
+
+.diffEntry:hover {
+  background: var(--bg-elevated);
+}
+
+.diffActive {
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--color-amber);
+  padding-left: 11px;
+}
+
+.diffTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.diffIter {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  min-width: 28px;
+}
+
+.diffDeltas {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.diffDeltaLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-muted);
+}
+
+.delta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.pos {
+  color: var(--color-green);
+  background: color-mix(in srgb, var(--color-green) 15%, transparent);
+}
+
+.neg {
+  color: #e05c5c;
+  background: color-mix(in srgb, #e05c5c 15%, transparent);
+}
+
+.diffZone {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-muted);
+}
+
+.inZone {
+  color: var(--color-green);
+}
+
+.diffDecision {
+  font-size: 11px;
+  color: var(--color-text);
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--color-muted);
+  padding: 16px 14px;
+  margin: 0;
+}

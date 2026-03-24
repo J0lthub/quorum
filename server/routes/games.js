@@ -240,4 +240,43 @@ router.post('/', async (req, res) => {
   }
 })
 
+// GET /api/games/:id/history — full iteration history per agent, with decisions
+router.get('/:id/history', async (req, res) => {
+  try {
+    const [[gameRow]] = await pool.execute(
+      'SELECT id FROM games WHERE id = ?', [req.params.id]
+    )
+    if (!gameRow) return res.status(404).json({ error: 'Game not found' })
+
+    const [rows] = await pool.execute(
+      `SELECT s.agent_id, s.iteration, s.social_score, s.planetary_score,
+              s.habitable_score, s.is_in_zone, s.decision, s.reasoning, s.committed_at
+       FROM agent_scores s
+       WHERE s.game_id = ?
+       ORDER BY s.agent_id, s.iteration ASC`,
+      [req.params.id]
+    )
+
+    // Group by agent
+    const byAgent = {}
+    for (const r of rows) {
+      if (!byAgent[r.agent_id]) byAgent[r.agent_id] = []
+      byAgent[r.agent_id].push({
+        iteration:  r.iteration,
+        social:     r.social_score,
+        planetary:  r.planetary_score,
+        habitable:  r.habitable_score,
+        inZone:     !!r.is_in_zone,
+        decision:   r.decision ?? null,
+        reasoning:  r.reasoning ?? null,
+        committedAt: r.committed_at,
+      })
+    }
+    res.json(byAgent)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 export default router

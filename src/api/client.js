@@ -50,6 +50,7 @@ export async function fetchGames()       { return get('/api/games') }
 export async function fetchGame(id)      { return get(`/api/games/${id}`) }
 export async function fetchLiveStats()   { return get('/api/stats') }
 export async function fetchDiff(id)      { return get(`/api/games/${id}/diff`) }
+export async function fetchHistory(id)   { return get(`/api/games/${id}/history`) }
 
 /**
  * fetchLeaderboard — maps snake_case DB columns to camelCase for the client.

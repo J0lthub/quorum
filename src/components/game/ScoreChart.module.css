@@ -1,0 +1,58 @@
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+}
+
+.gridZone {
+  stroke: var(--color-green);
+  stroke-width: 0.75;
+  stroke-dasharray: 4 3;
+  opacity: 0.5;
+}
+
+.zoneLabel {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  fill: var(--color-green);
+  opacity: 0.6;
+}
+
+.line {
+  fill: none;
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+.dot {
+  cursor: pointer;
+  opacity: 0.85;
+  transition: r 0.1s, opacity 0.1s;
+}
+
+.dot:hover {
+  opacity: 1;
+}
+
+.dot.active {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.axisLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: var(--color-muted);
+}
+
+.legendLabel {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: var(--color-muted);
+}
