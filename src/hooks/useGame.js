@@ -23,6 +23,7 @@ export function useGame(id) {
       setAgentScores(g ? deepCopy(g.scores) : null)
       setIsLoading(false)
 
+      if (cancelled) return
       if (g !== null) {
         intervalId = setInterval(() => {
           setAgentScores(prev => {

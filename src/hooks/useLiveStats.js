@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchLiveStats } from '../api/mock'
 
 export function useLiveStats() {
   const [stats, setStats] = useState(null)
+  const inFlightRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
-    let inFlight = false
 
-    if (!inFlight) {
-      inFlight = true
+    if (!inFlightRef.current) {
+      inFlightRef.current = true
       fetchLiveStats().then(data => {
         if (!cancelled) setStats(data)
-      }).finally(() => { inFlight = false })
+      }).finally(() => { inFlightRef.current = false })
     }
 
     const id = setInterval(() => {
-      if (inFlight) return
-      inFlight = true
+      if (inFlightRef.current) return
+      inFlightRef.current = true
       fetchLiveStats().then(data => {
         if (!cancelled) setStats(data)
-      }).finally(() => { inFlight = false })
+      }).finally(() => { inFlightRef.current = false })
     }, 5000)
 
     return () => {

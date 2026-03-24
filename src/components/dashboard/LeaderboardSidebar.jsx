@@ -10,6 +10,7 @@ function getPersonaColor(personaId) {
 export default function LeaderboardSidebar() {
   const [leaderboard, setLeaderboard] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -18,6 +19,8 @@ export default function LeaderboardSidebar() {
         setLeaderboard(data)
         setIsLoading(false)
       }
+    }).catch(() => {
+      if (!cancelled) { setError('Failed to load leaderboard.'); setIsLoading(false) }
     })
     return () => { cancelled = true }
   }, [])
@@ -25,8 +28,10 @@ export default function LeaderboardSidebar() {
   return (
     <aside className={styles.sidebar}>
       <h2 className={styles.title}>Leaderboard</h2>
+      {error && <span>Failed to load leaderboard.</span>}
       {isLoading
         ? <span>Loading…</span>
+        : !leaderboard ? null
         : (
           <ol className={styles.list}>
             {leaderboard.map(entry => (

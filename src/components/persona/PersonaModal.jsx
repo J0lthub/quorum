@@ -22,7 +22,7 @@ export default function PersonaModal({ question, onClose }) {
     }
     if (e.key === 'Tab') {
       const focusable = Array.from(
-        dialogRef.current.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])')
+        dialogRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
       )
       if (focusable.length === 0) return
       const first = focusable[0]
@@ -57,6 +57,7 @@ export default function PersonaModal({ question, onClose }) {
     setError(null)
     try {
       const game = await createGame({ question, agents: selected })
+      onClose()
       navigate(`/game/${game.id}`)
     } catch (err) {
       console.error('createGame failed', err)
@@ -67,10 +68,10 @@ export default function PersonaModal({ question, onClose }) {
 
   return (
     <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={dialogRef} tabIndex={-1} className={styles.panel} role="dialog" aria-modal="true" aria-label="Select agent personas" onKeyDown={handleKeyDown}>
+      <div ref={dialogRef} tabIndex={-1} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="persona-modal-title" onKeyDown={handleKeyDown}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
-            <h2 className={styles.title}>Choose Agent Personas</h2>
+            <h2 id="persona-modal-title" className={styles.title}>Choose Agent Personas</h2>
             <p className={styles.question}>"{question}"</p>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
@@ -80,7 +81,7 @@ export default function PersonaModal({ question, onClose }) {
           Select 2–5 personas ({selected.length}/5 selected)
         </p>
 
-        <div className={styles.grid} role="group" aria-label="Select agent personas">
+        <div className={styles.grid} role="group" aria-label="Agent persona options">
           {PERSONAS.map(persona => {
             const isSelected = selected.includes(persona.id)
             const isDisabled = selected.length >= 5 && !isSelected

@@ -44,8 +44,8 @@ export default function GameCard({ game }) {
     const s = game.scores[agent.id]
     if (!s) return acc
     const score = (s.social + s.planetary) / 2
-    return score > (acc.score || 0) ? { agent, score } : acc
-  }, {})
+    return score > acc.score ? { agent, score } : acc
+  }, { agent: null, score: -Infinity })
   const topColor = bestAgent.agent ? getPersonaColor(bestAgent.agent.personaId) : 'var(--color-border)'
 
   return (

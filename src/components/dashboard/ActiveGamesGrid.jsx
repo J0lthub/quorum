@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchGames } from '../../api/mock'
 import GameCard, { GameCardShimmer } from './GameCard'
 import styles from './ActiveGamesGrid.module.css'
 
 export default function ActiveGamesGrid() {
   const [games, setGames] = useState(null)
+  const inFlightRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
 
     function load() {
+      if (inFlightRef.current) return
+      inFlightRef.current = true
       fetchGames().then(data => {
         if (!cancelled) setGames(data)
-      })
+      }).finally(() => { inFlightRef.current = false })
     }
 
     load()

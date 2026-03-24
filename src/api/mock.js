@@ -161,6 +161,8 @@ export const MOCK_LEADERBOARD = [
 
 export const MOCK_LIVE_STATS = { activeAgents: 47, totalCommits: 12843, datasets: 31 }
 
+let _commitCount = MOCK_LIVE_STATS.totalCommits
+
 // Module-level mutable store for in-progress games
 const LIVE_GAMES = new Map()
 
@@ -191,9 +193,10 @@ export async function fetchLeaderboard() {
 
 export async function fetchLiveStats() {
   return new Promise(resolve => setTimeout(() => {
+    _commitCount += Math.floor(Math.random() * 10)
     resolve({
       activeAgents:  Math.max(0, MOCK_LIVE_STATS.activeAgents  + Math.floor(Math.random() * 5 - 2)),
-      totalCommits:  MOCK_LIVE_STATS.totalCommits  + Math.floor(Math.random() * 10),
+      totalCommits:  _commitCount,
       datasets:      Math.max(0, MOCK_LIVE_STATS.datasets      + Math.floor(Math.random() * 3 - 1)),
     })
   }, 120))

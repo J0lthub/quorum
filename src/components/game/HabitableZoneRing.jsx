@@ -8,7 +8,7 @@ function toY(planetary) { return 450 - (planetary / 100) * 400 }
 
 export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
   const [isPulsing, setIsPulsing] = useState(false)
-  const prevBestRef = useRef(null)
+  const prevBestRef = useRef(bestScore)
 
   useEffect(() => {
     if (bestScore == null) {
@@ -31,7 +31,6 @@ export default function HabitableZoneRing({ agents, agentScores, bestScore }) {
       <rect
         x={toX(60)} y={toY(100)}
         width={toX(100) - toX(60)} height={toY(60) - toY(100)}
-        fill="rgba(76, 175, 110, 0.20)"
         className={`${styles.habitableZoneFill}${isPulsing ? ` ${styles.ringPulse}` : ''}`}
         onAnimationEnd={() => setIsPulsing(false)}
       />

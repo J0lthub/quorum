@@ -9,6 +9,7 @@ function getPersona(id) {
 export default function RecentResults() {
   const [results, setResults] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -17,6 +18,8 @@ export default function RecentResults() {
         setResults(data)
         setIsLoading(false)
       }
+    }).catch(() => {
+      if (!cancelled) { setError('Failed to load recent results.'); setIsLoading(false) }
     })
     return () => { cancelled = true }
   }, [])
@@ -24,9 +27,11 @@ export default function RecentResults() {
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle}>Recent Results</h2>
+      {error && <span>{error}</span>}
       <div className={styles.strip}>
         {isLoading
           ? <span>Loading…</span>
+          : !results ? null
           : results.map(result => {
               const persona = getPersona(result.winningPersona)
               return (
