@@ -2,7 +2,8 @@
 set -euo pipefail
 
 DB_DIR="${HOME}/Desktop/donut-game-db"
-DOLT_BIN="/opt/homebrew/bin/dolt"
+DOLT_BIN="${DOLT_BIN:-$(command -v dolt)}"
+if [ -z "$DOLT_BIN" ]; then echo "dolt not found in PATH"; exit 1; fi
 
 echo "==> Initializing Dolt repo at $DB_DIR"
 mkdir -p "$DB_DIR"

@@ -20,17 +20,27 @@ const router = Router()
  * through the pool — the pool connection's working-set is invisible to the
  * withBranch connection's staging area.
  *
- * The winner SELECT (read-only) happens BEFORE withBranch using the pool,
- * which is fine because those rows were already committed by tick.js.
+ * TWO-COMMIT PATTERN: We must commit the leaderboard INSERT before we can
+ * know the commit hash. After the first commit we read DOLT_HASHOF('HEAD'),
+ * update the leaderboard row, and make a second commit. This is intentional:
+ * the hash is not knowable until after the first commit, so two commits are
+ * the minimum required. A comment marks each step for clarity.
+ *
+ * IDEMPOTENCY: The UPDATE uses `WHERE status='active'` as a DB-level guard.
+ * Only the first caller will see affectedRows=1; all concurrent callers see 0
+ * and return early. This avoids the read-then-write TOCTOU race.
  */
 export async function finishGame(gameId) {
-  const [[game]] = await pool.execute('SELECT status FROM games WHERE id = ?', [gameId])
-  if (!game || game.status === 'completed') return null
+  // DB-level idempotency guard: only one concurrent caller can win this UPDATE.
+  // If status is already 'completed' (or game not found), affectedRows === 0.
+  const [result] = await pool.execute(
+    "UPDATE games SET status='completed' WHERE id=? AND status='active'",
+    [gameId]
+  )
+  if (result.affectedRows === 0) return null
 
   // 1. Read game metadata and find the best in-zone agent BEFORE opening the
   //    write connection. These are read-only queries on already-committed data.
-  //    Using pool here is safe because tick.js has finished its withBranch
-  //    commits before calling finishGame.
   const [[gameData]] = await pool.execute(
     'SELECT question, username FROM games WHERE id = ?', [gameId]
   )
@@ -45,37 +55,31 @@ export async function finishGame(gameId) {
   )
 
   if (!best) {
-    // No in-zone agent — mark completed and commit on one dedicated connection.
-    // UPDATE games + DOLT_ADD + DOLT_COMMIT must share the same connection.
+    // No in-zone agent — the UPDATE above already marked the game completed.
+    // Just commit the status change on a dedicated connection.
     await withBranch('main', async (conn) => {
-      await conn.execute(
-        "UPDATE games SET status = 'completed' WHERE id = ?", [gameId]
-      )
       await conn.execute('CALL DOLT_ADD(?)', ['.'])
       await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`game ${gameId}: completed (no in-zone agent)`])
     })
     return null
   }
 
-  // 2. UPDATE games + INSERT leaderboard + DOLT_ADD + DOLT_COMMIT + read hash —
-  //    ALL on the SAME dedicated connection inside a single withBranch call.
-  //    Mixing pool writes with a separate withBranch commit leaves the pool
-  //    connection's changes unstaged.
-  //    username comes from game.username (set at POST /api/games creation time),
-  //    NOT from best.persona_id — those are different concepts.
+  // 2. INSERT leaderboard + DOLT_ADD + first DOLT_COMMIT + read hash +
+  //    UPDATE commit_hash + DOLT_ADD + second DOLT_COMMIT — all on the SAME
+  //    dedicated connection inside a single withBranch call.
   //
-  //    The commit_hash is obtained by calling SELECT DOLT_HASHOF('HEAD') on
-  //    the SAME conn immediately after DOLT_COMMIT — this is the finish commit
-  //    hash. Reading it from the pool after the block would require a separate
-  //    round-trip and risks a race; reading it before DOLT_COMMIT would return
-  //    the prior HEAD. Using DOLT_HASHOF('HEAD') on the same conn is the
-  //    simplest and most correct approach — no back-fill UPDATE needed.
+  //    TWO-COMMIT PATTERN (intentional):
+  //    - Commit 1: stages the games UPDATE + leaderboard INSERT, creates the
+  //      "finish" commit whose hash we need to record.
+  //    - After commit 1 we read DOLT_HASHOF('HEAD') to get that hash.
+  //    - Commit 2: stages the leaderboard.commit_hash UPDATE so the hash is
+  //      persisted in the DB history. This second commit is the minimum extra
+  //      work required; there is no way to know the hash before making it.
   const lbId = nanoid()
   let commitHash = ''
+
   await withBranch('main', async (conn) => {
-    await conn.execute(
-      "UPDATE games SET status = 'completed' WHERE id = ?", [gameId]
-    )
+    // (a) INSERT leaderboard row with empty commit_hash placeholder
     await conn.execute(
       `INSERT INTO leaderboard
          (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
@@ -83,24 +87,23 @@ export async function finishGame(gameId) {
       [lbId, gameData.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
        gameData.question, '']
     )
-    // DOLT_ADD and DOLT_COMMIT on the same conn — staging sees both the UPDATE and INSERT
+    // (b) Stage everything (games UPDATE + leaderboard INSERT)
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
+    // (c) First commit — this is the "finish" commit
     await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
       `game ${gameId}: completed — winner ${best.persona_id} habitable=${best.habitable_score.toFixed(1)}`
     ])
-    // Read the finish commit hash on the SAME connection, immediately after
-    // DOLT_COMMIT. DOLT_HASHOF('HEAD') returns the hash that was just created.
-    // This avoids a second withBranch round-trip and requires no back-fill UPDATE.
+    // (d) Read the hash of the commit we just made
     const [[hashRow]] = await conn.execute("SELECT DOLT_HASHOF('HEAD') AS h")
     commitHash = hashRow?.h ?? ''
-    // Now that we have the hash, update the leaderboard row on the same conn
-    // so it is staged and committed in the same transaction context.
+    // (e) Update the leaderboard row with the now-known hash
     await conn.execute(
       'UPDATE leaderboard SET commit_hash = ? WHERE id = ?', [commitHash, lbId]
     )
+    // (f) Second commit — persists the commit_hash back-fill
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
     await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
-      `game ${gameId}: set leaderboard commit_hash`
+      `game ${gameId}: leaderboard commit_hash set to ${commitHash.slice(0, 7)}`
     ])
   })
 
@@ -118,7 +121,8 @@ router.post('/:id/finish', async (req, res) => {
     const result = await finishGame(gameId)
     res.json({ finished: true, ...result })
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 

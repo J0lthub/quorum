@@ -116,7 +116,8 @@ router.post('/:id/tick', async (req, res) => {
 
     res.json({ gameId, scores: updatedScores, completed })
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 

@@ -58,7 +58,8 @@ router.get('/:id/diff', async (req, res) => {
 
     res.json(diffs)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 

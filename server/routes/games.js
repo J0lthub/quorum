@@ -4,80 +4,127 @@ import { pool, ensureBranch, withBranch } from '../db.js'
 
 const router = Router()
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── Persona validation ─────────────────────────────────────────────────────
 
-/** Map rows from agents + latest agent_scores into the frontend game shape. */
-async function buildGamePayload(gameRow) {
-  const [agents] = await pool.execute(
-    'SELECT * FROM agents WHERE game_id = ? ORDER BY created_at', [gameRow.id]
+// These 13 ids mirror the PERSONAS array in src/api/client.js.
+// Update both places if the persona list changes.
+const VALID_PERSONA_IDS = new Set([
+  'scientist',
+  'engineer',
+  'industrial_designer',
+  'mathematician',
+  'journalist',
+  'commons_steward',
+  'regenerative_economist',
+  'social_equity_analyst',
+  'planetary_boundaries',
+  'care_economy_advocate',
+  'urban_ecologist',
+  'degrowth_strategist',
+  'indigenous_knowledge',
+])
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Build a game payload from flat JOIN rows.
+ * Replaces the old per-game/per-agent N+1+M query pattern with a single JOIN.
+ */
+async function buildGamePayloads(gameIds) {
+  if (gameIds.length === 0) return []
+
+  // Single JOIN: games + agents + latest agent_scores (correlated subquery for latest)
+  const placeholders = gameIds.map(() => '?').join(', ')
+  const [rows] = await pool.execute(
+    `SELECT g.id AS game_id, g.question, g.status, g.created_at,
+            a.id AS agent_id, a.persona_id, a.branch_name, a.iteration,
+            s.social_score, s.planetary_score
+     FROM games g
+     LEFT JOIN agents a ON a.game_id = g.id
+     LEFT JOIN agent_scores s ON s.agent_id = a.id
+       AND s.id = (SELECT id FROM agent_scores WHERE agent_id = a.id ORDER BY iteration DESC LIMIT 1)
+     WHERE g.id IN (${placeholders})
+     ORDER BY g.created_at DESC`,
+    gameIds
   )
 
-  const scores = {}
-  for (const agent of agents) {
-    const [scoreRows] = await pool.execute(
-      `SELECT social_score, planetary_score, habitable_score, iteration
-       FROM agent_scores
-       WHERE agent_id = ?
-       ORDER BY iteration DESC
-       LIMIT 1`,
-      [agent.id]
-    )
-    if (scoreRows.length) {
-      const s = scoreRows[0]
-      scores[agent.id] = {
-        social:    s.social_score,
-        planetary: s.planetary_score,
-        habitable: s.habitable_score,
+  // Assemble nested structure from flat rows
+  const gamesMap = new Map()
+  for (const row of rows) {
+    if (!gamesMap.has(row.game_id)) {
+      gamesMap.set(row.game_id, {
+        id:        row.game_id,
+        question:  row.question,
+        status:    row.status,
+        startedAt: row.created_at,
+        agents:    [],
+        scores:    {},
+      })
+    }
+    const game = gamesMap.get(row.game_id)
+    if (row.agent_id && !game.agents.find(a => a.id === row.agent_id)) {
+      game.agents.push({
+        id:        row.agent_id,
+        personaId: row.persona_id,
+        branch:    row.branch_name,
+        iteration: row.iteration,
+      })
+      game.scores[row.agent_id] = {
+        social:    row.social_score    ?? 0,
+        planetary: row.planetary_score ?? 0,
+        habitable: row.social_score != null && row.planetary_score != null
+          ? (row.social_score + row.planetary_score) / 2
+          : 0,
       }
-    } else {
-      scores[agent.id] = { social: 0, planetary: 0, habitable: 0 }
     }
   }
-
-  return {
-    id:        gameRow.id,
-    question:  gameRow.question,
-    status:    gameRow.status,
-    startedAt: gameRow.created_at,
-    agents:    agents.map(a => ({
-      id:        a.id,
-      personaId: a.persona_id,
-      branch:    a.branch_name,
-      iteration: a.iteration,
-    })),
-    scores,
-  }
+  // Return in original game order (created_at DESC preserved by Map insertion order)
+  return [...gamesMap.values()]
 }
 
-// ─── Routes ────────────────────────────────────────────────────────────────
+// ─── Routes ─────────────────────────────────────────────────────────────────
 
 // GET /api/games
 router.get('/', async (_req, res) => {
   try {
-    const [games] = await pool.execute("SELECT * FROM games ORDER BY created_at DESC")
-    const payloads = await Promise.all(games.map(buildGamePayload))
+    const [games] = await pool.execute(
+      'SELECT id FROM games ORDER BY created_at DESC LIMIT 20'
+    )
+    const payloads = await buildGamePayloads(games.map(g => g.id))
     res.json(payloads)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 
 // GET /api/games/:id
 router.get('/:id', async (req, res) => {
   try {
-    const [[game]] = await pool.execute('SELECT * FROM games WHERE id = ?', [req.params.id])
-    if (!game) return res.status(404).json({ error: 'Game not found' })
-    res.json(await buildGamePayload(game))
+    const payloads = await buildGamePayloads([req.params.id])
+    if (!payloads.length) return res.status(404).json({ error: 'Game not found' })
+    res.json(payloads[0])
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 
 // POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string }
 router.post('/', async (req, res) => {
   const { question, agents: personaIds, username = 'anonymous' } = req.body
+
+  // Type guards — must come before any .length access
+  if (typeof question !== 'string') return res.status(400).json({ error: 'question must be a string' })
+  if (!Array.isArray(personaIds)) return res.status(400).json({ error: 'agents must be an array' })
+
   if (!question || question.length > 500) return res.status(400).json({ error: 'question required, max 500 chars' })
-  if (!personaIds || personaIds.length < 2 || personaIds.length > 5) return res.status(400).json({ error: 'select 2–5 personas' })
+  if (personaIds.length < 2 || personaIds.length > 5) return res.status(400).json({ error: 'select 2–5 personas' })
+  if (username && username.length > 64) return res.status(400).json({ error: 'username max 64 chars' })
+
+  // Persona ID validation against the known list
+  const invalid = personaIds.filter(id => !VALID_PERSONA_IDS.has(id))
+  if (invalid.length) return res.status(400).json({ error: `Unknown personas: ${invalid.join(', ')}` })
 
   const gameId = nanoid()
 
@@ -163,7 +210,8 @@ router.post('/', async (req, res) => {
       scores,
     })
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error(err)
+    res.status(500).json({ error: 'Internal server error' })
   }
 })
 

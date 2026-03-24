@@ -24,6 +24,9 @@ export async function withBranch(branch, fn) {
   const conn = await mysql.createConnection(BASE_CONFIG)
   try {
     await conn.execute('CALL DOLT_CHECKOUT(?)', [branch])
+    // Explicitly select the database after checkout to guarantee the correct
+    // database is active regardless of Dolt version behaviour.
+    await conn.execute('USE ??', [process.env.DOLT_DATABASE ?? 'donut_game'])
     return await fn(conn)
   } finally {
     await conn.end()

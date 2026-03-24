@@ -11,6 +11,7 @@ export function useGame(gameId) {
   const [isLoading, setIsLoading] = useState(true)
   const [gameStatus, setGameStatus] = useState(null)
   const intervalRef = useRef(null)
+  const tickInFlightRef = useRef(false)
 
   useEffect(() => {
     setGame(null)
@@ -35,11 +36,14 @@ export function useGame(gameId) {
       if (cancelled) return
       if (g !== null) {
         // Start the tick interval only after initial data has loaded.
-        let tickInFlight = false
+        // Use a ref so the in-flight flag survives re-renders and the .finally()
+        // callback does not trigger setState on an unmounted component.
+        tickInFlightRef.current = false
         intervalRef.current = setInterval(() => {
-          if (tickInFlight) return
-          tickInFlight = true
+          if (tickInFlightRef.current) return
+          tickInFlightRef.current = true
           tickGame(gameId).then(result => {   // gameId — NOT `id`
+            if (cancelled) return
             setAgentScores(result.scores)            // update from server response, not local mutation
             if (result.completed === true) {
               clearInterval(intervalRef.current)
@@ -48,7 +52,7 @@ export function useGame(gameId) {
           }).catch(err => {
             console.error('tick failed', err)
           }).finally(() => {
-            tickInFlight = false
+            tickInFlightRef.current = false
           })
         }, 2000)
       }

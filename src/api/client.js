@@ -25,7 +25,7 @@ async function post(path, body) {
 // ─── snake_case → camelCase helpers ────────────────────────────────────────
 
 /** Map a leaderboard row (snake_case from MySQL) to camelCase for the client. */
-const mapLeaderboardRow = row => ({
+export const mapLeaderboardRow = row => ({
   rank:           row.rank,
   username:       row.username,
   bestScore:      row.best_score,
@@ -34,16 +34,6 @@ const mapLeaderboardRow = row => ({
   dataset:        row.dataset,
   date:           row.created_at,
   commitHash:     row.commit_hash,
-})
-
-/** Map a recent-results row (snake_case from MySQL) to camelCase for the client. */
-const mapRecentRow = row => ({
-  id:             row.id,
-  question:       row.question,
-  winningPersona: row.winning_persona,
-  habitableScore: row.habitable_score,
-  commitHash:     row.commit_hash,
-  diffUrl:        row.diff_url ?? '#',
 })
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -90,8 +80,9 @@ export async function fetchLeaderboard() {
  * before calling .toFixed() (see component change below).
  */
 export async function fetchRecent() {
-  const entries = await get('/api/recent')
-  return entries.map(mapRecentRow)
+  // The server's /api/recent route already returns camelCase fields:
+  // id, question, winningPersona, habitableScore, commitHash, diffUrl
+  return get('/api/recent')
 }
 
 /**

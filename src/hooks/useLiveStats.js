@@ -25,6 +25,7 @@ export function useLiveStats() {
 
     return () => {
       cancelled = true
+      // Reset so a fresh mount can start immediately; the old in-flight request's .finally() is harmless (sets same value)
       inFlightRef.current = false
       clearInterval(id)
     }
