@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS agent_scores (
   habitable_score  DOUBLE      NOT NULL,
   is_in_zone       TINYINT(1)  NOT NULL DEFAULT 0,
   commit_message   TEXT,
+  decision         TEXT,
+  reasoning        TEXT,
   committed_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (agent_id) REFERENCES agents(id),
   FOREIGN KEY (game_id)  REFERENCES games(id)
