@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB_DIR="${DOLT_DATA_DIR:-./donut-game-db}"
+# DATA_DIR is the sql-server --data-dir (contains database subdirectories)
+# The actual Dolt repo lives at DATA_DIR/donut_game/
+DATA_DIR="${DOLT_DATA_DIR:-./donut-game-db}"
+DB_DIR="$DATA_DIR/donut_game"
 DOLT_BIN="${DOLT_BIN:-$(command -v dolt)}"
 if [ -z "$DOLT_BIN" ]; then echo "dolt not found in PATH"; exit 1; fi
 
