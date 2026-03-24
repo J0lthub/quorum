@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # DATA_DIR is the sql-server --data-dir (contains database subdirectories)
-# The actual Dolt repo lives at DATA_DIR/donut_game/
-DATA_DIR="${DOLT_DATA_DIR:-./donut-game-db}"
-DB_DIR="$DATA_DIR/donut_game"
+# The actual Dolt repo lives at DATA_DIR/quorum/
+DATA_DIR="${DOLT_DATA_DIR:-./quorum-db}"
+DB_DIR="$DATA_DIR/quorum"
 DOLT_BIN="${DOLT_BIN:-$(command -v dolt)}"
 if [ -z "$DOLT_BIN" ]; then echo "dolt not found in PATH"; exit 1; fi
 
@@ -14,9 +14,9 @@ cd "$DB_DIR"
 
 if [ ! -d ".dolt" ]; then
   "$DOLT_BIN" init
-  "$DOLT_BIN" config --local --add user.email "donut-game@local"
-  "$DOLT_BIN" config --local --add user.name  "Donut Game"
-  "$DOLT_BIN" remote add origin j0lt/Donut_Game
+  "$DOLT_BIN" config --local --add user.email "quorum@local"
+  "$DOLT_BIN" config --local --add user.name  "Quorum"
+  "$DOLT_BIN" remote add origin j0lt/Quorum
 fi
 
 run_sql() {
@@ -102,8 +102,6 @@ run_sql "INSERT IGNORE INTO datasets (id, name, row_count, category, description
   ('ds-08', 'IUCN-2024',      21900, 'Biodiversity','IUCN Red List and ecosystem health data'),
   ('ds-09', 'TfL-Open-2024',   8400, 'Transport',   'Transport for London open data 2024');
 "
-
-# Debug: run_sql "SHOW COLUMNS FROM dolt_diff_agent_scores;" 2>&1 | head -20
 
 echo "==> Initial Dolt commit"
 run_sql "CALL DOLT_ADD('.')"

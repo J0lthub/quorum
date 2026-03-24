@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise'
 import dotenv from 'dotenv'
 dotenv.config()
 
-const DB_NAME = process.env.DOLT_DATABASE ?? 'donut_game'
+const DB_NAME = process.env.DOLT_DATABASE ?? 'quorum'
 if (!/^[a-zA-Z0-9_]+$/.test(DB_NAME)) {
   throw new Error('DOLT_DATABASE must be alphanumeric/underscore only')
 }
