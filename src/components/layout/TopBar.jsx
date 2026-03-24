@@ -6,7 +6,7 @@ export default function TopBar() {
 
   return (
     <header className={styles.topBar}>
-      <span className={styles.logo}>Donut Game</span>
+      <span className={styles.logo}>Quorum</span>
       <div className={styles.chips}>
         <span className={`${styles.chip} ${stats ? styles.loaded : ''}`}>
           <span className={styles.dot} />
