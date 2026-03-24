@@ -16,7 +16,7 @@ if [ ! -d ".dolt" ]; then
   "$DOLT_BIN" init
   "$DOLT_BIN" config --local --add user.email "quorum@local"
   "$DOLT_BIN" config --local --add user.name  "Quorum"
-  "$DOLT_BIN" remote add origin j0lt/Quorum
+  "$DOLT_BIN" remote add origin j0lt/Donut_Game
 fi
 
 run_sql() {

@@ -3,7 +3,7 @@
   "remotes": {
     "origin": {
       "name": "origin",
-      "url": "https://doltremoteapi.dolthub.com/j0lt/Quorum",
+      "url": "https://doltremoteapi.dolthub.com/j0lt/Donut_Game",
       "fetch_specs": [
         "refs/heads/*:refs/remotes/origin/*"
       ],
