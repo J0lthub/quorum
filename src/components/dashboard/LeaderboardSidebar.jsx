@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchLeaderboard, PERSONAS } from '../../api/mock'
+import { fetchLeaderboard, PERSONAS } from '../../api/client.js'
 import styles from './LeaderboardSidebar.module.css'
 
 function getPersonaColor(personaId) {

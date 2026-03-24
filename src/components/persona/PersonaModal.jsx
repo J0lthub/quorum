@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PERSONAS, createGame } from '../../api/mock'
+import { PERSONAS, createGame } from '../../api/client.js'
 import PersonaCard from './PersonaCard'
 import styles from './PersonaModal.module.css'
 

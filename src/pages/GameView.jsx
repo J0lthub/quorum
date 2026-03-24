@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
-import { PERSONAS } from '../api/mock'
+import { PERSONAS } from '../api/client.js'
 import { useGame } from '../hooks/useGame'
 import { elapsed } from '../utils/elapsed'
 import TopBar from '../components/layout/TopBar'
@@ -20,8 +20,8 @@ function enrichAgents(agents) {
 }
 
 export default function GameView() {
-  const { id } = useParams()
-  const { game, agentScores, bestScore, bestAgentId, isLoading } = useGame(id)
+  const { id: gameId } = useParams()
+  const { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus } = useGame(gameId)
 
   if (isLoading) {
     return (
@@ -46,6 +46,7 @@ export default function GameView() {
   }
 
   const enriched = enrichAgents(game.agents)
+  const displayStatus = gameStatus ?? game?.status
 
   return (
     <div className={styles.page}>
@@ -55,8 +56,8 @@ export default function GameView() {
           <Link to="/" className={styles.backLink}>← Dashboard</Link>
           <h1 className={styles.question}>{game.question}</h1>
           <div className={styles.headerMeta}>
-            <span className={`${styles.statusBadge} ${styles[game.status]}`}>
-              {game.status === 'active' ? 'LIVE' : 'DONE'}
+            <span className={`${styles.statusBadge} ${styles[displayStatus]}`}>
+              {displayStatus === 'active' ? 'LIVE' : 'DONE'}
             </span>
             <span className={styles.elapsed}>{elapsed(game.startedAt)}</span>
           </div>

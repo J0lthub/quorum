@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchLiveStats } from '../api/mock'
+import { fetchLiveStats } from '../api/client.js'
 
 export function useLiveStats() {
   const [stats, setStats] = useState(null)

@@ -1,4 +1,4 @@
-import { PERSONAS } from '../../api/mock'
+import { PERSONAS } from '../../api/client.js'
 import { isInZone, computeHabitableScore } from '../../utils/scoring'
 import styles from './ScorePanel.module.css'
 

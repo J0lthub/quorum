@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchRecent, PERSONAS } from '../../api/mock'
+import { fetchRecent, PERSONAS } from '../../api/client.js'
 import styles from './RecentResults.module.css'
 
 function getPersona(id) {
@@ -53,7 +53,7 @@ export default function RecentResults() {
                         {persona.name}
                       </span>
                     )}
-                    <span className={styles.score}>{result.habitableScore.toFixed(1)}</span>
+                    <span className={styles.score}>{result.habitableScore != null ? Number(result.habitableScore).toFixed(1) : '—'}</span>
                     {result.diffUrl && result.diffUrl !== '#'
                       ? <a href={result.diffUrl} className={styles.diffLink}>diff</a>
                       : <button className={styles.diffLink} title="Diff viewer coming soon">diff</button>

@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchGame } from '../api/mock'
+import { fetchGame, tickGame } from '../api/client.js'
 import { isInZone, computeHabitableScore } from '../utils/scoring'
 
 // structuredClone handles all serializable types; switch to custom clone if non-serializable data is added
 function deepCopy(obj) { return structuredClone(obj) }
 
-export function useGame(id) {
+export function useGame(gameId) {
   const [game, setGame] = useState(null)
   const [agentScores, setAgentScores] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [gameStatus, setGameStatus] = useState(null)
   const intervalRef = useRef(null)
 
   useEffect(() => {
@@ -18,24 +19,33 @@ export function useGame(id) {
 
     let cancelled = false
 
-    fetchGame(id).then(g => {
+    fetchGame(gameId).then(g => {
       if (cancelled) return
       setGame(g)
       setAgentScores(g ? deepCopy(g.scores) : null)
       setIsLoading(false)
 
+      // If the game was already completed when loaded (e.g. page refresh on a
+      // finished game), do NOT start the tick interval. Mark it done immediately.
+      if (g?.status === 'completed') {
+        setGameStatus('completed')
+        return
+      }
+
       if (cancelled) return
       if (g !== null) {
-        intervalRef.current = setInterval(() => {
-          setAgentScores(prev => {
-            if (!prev) return prev
-            const next = deepCopy(prev)
-            for (const agent of Object.keys(next)) {
-              next[agent].social    = Math.min(100, Math.max(0, next[agent].social    + (Math.random() * 4 - 2)))
-              next[agent].planetary = Math.min(100, Math.max(0, next[agent].planetary + (Math.random() * 4 - 2)))
+        // Start the tick interval only after initial data has loaded.
+        intervalRef.current = setInterval(async () => {
+          try {
+            const result = await tickGame(gameId)   // gameId — NOT `id`
+            setAgentScores(result.scores)            // update from server response, not local mutation
+            if (result.completed === true) {
+              clearInterval(intervalRef.current)
+              setGameStatus('completed')
             }
-            return next
-          })
+          } catch (err) {
+            console.error('tick failed', err)
+          }
         }, 2000)
       }
     })
@@ -44,7 +54,7 @@ export function useGame(id) {
       cancelled = true
       clearInterval(intervalRef.current)
     }
-  }, [id])
+  }, [gameId])
 
   const bestScore = agentScores
     ? (() => {
@@ -69,5 +79,5 @@ export function useGame(id) {
       })()
     : null
 
-  return { game, agentScores, bestScore, bestAgentId, isLoading }
+  return { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus }
 }

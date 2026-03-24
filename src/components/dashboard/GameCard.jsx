@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PERSONAS } from '../../api/mock'
+import { PERSONAS } from '../../api/client.js'
 import { elapsed } from '../../utils/elapsed'
 import { ZONE_THRESHOLD, BORDERLINE_THRESHOLD } from '../../utils/scoring'
 import styles from './GameCard.module.css'

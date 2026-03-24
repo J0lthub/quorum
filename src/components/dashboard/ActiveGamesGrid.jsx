@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchGames } from '../../api/mock'
+import { fetchGames } from '../../api/client.js'
 import GameCard, { GameCardShimmer } from './GameCard'
 import styles from './ActiveGamesGrid.module.css'
 
