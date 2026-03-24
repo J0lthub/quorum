@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS games (
   id          VARCHAR(36)   NOT NULL PRIMARY KEY,
   question    TEXT          NOT NULL,
   status      VARCHAR(16)   NOT NULL DEFAULT 'active',
+  username    VARCHAR(64)   NOT NULL DEFAULT 'anonymous',
   created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 "
@@ -363,11 +364,15 @@ router.get('/', async (_req, res) => {
 
       const commitHash = logRow?.commit_hash ?? ''
 
+      // Skip games where no in-zone agent exists (best is undefined/null) to
+      // prevent `habitableScore.toFixed` TypeError on the client.
+      if (!best) continue
+
       results.push({
         id:             game.id,
         question:       game.question,
-        winningPersona: best?.persona_id   ?? null,
-        habitableScore: best?.habitable_score ?? null,
+        winningPersona: best.persona_id,
+        habitableScore: best.habitable_score,
         commitHash,
         diffUrl:        '#',
       })
@@ -420,12 +425,17 @@ export default router
 Handles listing, fetching, and creating games.
 
 **Critical ordering for game creation:**
-1. Insert into `games` (main).
-2. Insert all `agents` rows (main).
-3. Insert all initial `agent_scores` rows (main).
-4. **Commit these rows to main** with `CALL DOLT_ADD('.')` then
+1. All inserts (games, agents, agent_scores) AND `DOLT_ADD`/`DOLT_COMMIT` must
+   run on the **same dedicated connection** via `withBranch('main', async conn => { ... })`.
+   Using `pool` for inserts then a separate connection for `DOLT_ADD` means the
+   staging area on the second connection sees nothing — the pool connection's
+   uncommitted working-set changes are invisible to a different connection.
+2. Insert into `games` on the dedicated conn.
+3. Insert all `agents` rows on the dedicated conn.
+4. Insert all initial `agent_scores` rows on the dedicated conn.
+5. **Commit all rows to main** on the same conn: `CALL DOLT_ADD('.')` then
    `CALL DOLT_COMMIT('-m', 'game {id}: create game and agents')`.
-5. Only then call `ensureBranch(branchName)` for each agent — so the branch
+6. Only then call `ensureBranch(branchName)` for each agent — so the branch
    forks from a main that already contains the parent rows. Attempting to insert
    `agent_scores` (which has foreign keys to `agents` and `games`) on a branch
    that forked before those rows existed causes a foreign key violation.
@@ -506,9 +516,9 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// POST /api/games  — body: { question, agents: ['persona_id', ...] }
+// POST /api/games  — body: { question, agents: ['persona_id', ...], username?: string }
 router.post('/', async (req, res) => {
-  const { question, agents: personaIds } = req.body
+  const { question, agents: personaIds, username = 'anonymous' } = req.body
   if (!question || !Array.isArray(personaIds) || personaIds.length === 0) {
     return res.status(400).json({ error: 'question and agents[] are required' })
   }
@@ -516,65 +526,57 @@ router.post('/', async (req, res) => {
   const gameId = nanoid()
 
   try {
-    // Step 1: Insert game row on main
-    await pool.execute(
-      'INSERT INTO games (id, question, status) VALUES (?, ?, ?)',
-      [gameId, question, 'active']
-    )
-
     const agentRows = []
 
-    // Step 2: Insert all agent and initial score rows on main
-    for (const personaId of personaIds) {
-      const [[{ cnt }]] = await pool.execute(
-        'SELECT COUNT(*) AS cnt FROM agents WHERE persona_id = ?', [personaId]
-      )
-      const seq        = String(parseInt(cnt) + 1).padStart(2, '0')
-      const branchName = `agent/${personaId}-${seq}`
-      const agentId    = nanoid()
-
-      await pool.execute(
-        'INSERT INTO agents (id, game_id, persona_id, branch_name, iteration) VALUES (?,?,?,?,0)',
-        [agentId, gameId, personaId, branchName]
+    // Steps 1–3 and the DOLT_ADD/DOLT_COMMIT must ALL run on the SAME dedicated
+    // connection. Using pool for inserts and a separate connection for
+    // DOLT_ADD/DOLT_COMMIT would stage nothing — each connection has its own
+    // working set, so the second connection would see an empty diff.
+    await withBranch('main', async (conn) => {
+      // Step 1: Insert game row
+      await conn.execute(
+        'INSERT INTO games (id, question, status, username) VALUES (?, ?, ?, ?)',
+        [gameId, question, 'active', username]
       )
 
-      const social    = 55 + Math.random() * 25
-      const planetary = 55 + Math.random() * 25
-      const habitable = (social + planetary) / 2
-      const inZone    = social >= 60 && planetary >= 60 ? 1 : 0
-      const scoreId   = nanoid()
+      // Step 2: Insert all agent and initial score rows
+      for (const personaId of personaIds) {
+        const [[{ cnt }]] = await conn.execute(
+          'SELECT COUNT(*) AS cnt FROM agents WHERE persona_id = ?', [personaId]
+        )
+        const seq        = String(parseInt(cnt) + 1).padStart(2, '0')
+        const branchName = `agent/${personaId}-${seq}`
+        const agentId    = nanoid()
 
-      await pool.execute(
-        `INSERT INTO agent_scores
-           (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
-         VALUES (?,?,?,0,?,?,?,?,?)`,
-        [scoreId, agentId, gameId, social, planetary, habitable, inZone,
-         `init: ${personaId} baseline scores`]
-      )
+        await conn.execute(
+          'INSERT INTO agents (id, game_id, persona_id, branch_name, iteration) VALUES (?,?,?,?,0)',
+          [agentId, gameId, personaId, branchName]
+        )
 
-      agentRows.push({ id: agentId, personaId, branch: branchName, iteration: 0,
-                       scoreId, social, planetary, habitable, inZone })
-    }
+        const social    = 55 + Math.random() * 25
+        const planetary = 55 + Math.random() * 25
+        const habitable = (social + planetary) / 2
+        const inZone    = social >= 60 && planetary >= 60 ? 1 : 0
+        const scoreId   = nanoid()
 
-    // Step 3: Commit all main-branch rows BEFORE creating any agent branches.
-    // Agent branches must fork from a main that already contains the games,
-    // agents, and agent_scores rows — otherwise foreign key constraints on
-    // agent branches will fail when those rows are absent on the forked state.
-    const conn = await import('mysql2/promise').then(m =>
-      m.default.createConnection({
-        host:     process.env.DOLT_HOST     ?? '127.0.0.1',
-        port:     parseInt(process.env.DOLT_PORT ?? '3307'),
-        user:     process.env.DOLT_USER     ?? 'root',
-        password: process.env.DOLT_PASSWORD ?? '',
-        database: process.env.DOLT_DATABASE ?? 'donut_game',
-      })
-    )
-    try {
+        await conn.execute(
+          `INSERT INTO agent_scores
+             (id, agent_id, game_id, iteration, social_score, planetary_score, habitable_score, is_in_zone, commit_message)
+           VALUES (?,?,?,0,?,?,?,?,?)`,
+          [scoreId, agentId, gameId, social, planetary, habitable, inZone,
+           `init: ${personaId} baseline scores`]
+        )
+
+        agentRows.push({ id: agentId, personaId, branch: branchName, iteration: 0,
+                         scoreId, social, planetary, habitable, inZone })
+      }
+
+      // Step 3: Commit all rows on THIS SAME connection.
+      // Agent branches must fork from a committed main — otherwise foreign key
+      // constraints on the agent branches will fail.
       await conn.execute('CALL DOLT_ADD(?)', ['.'])
       await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`game ${gameId}: create game and agents`])
-    } finally {
-      await conn.end()
-    }
+    })
 
     // Step 4: Create agent branches (they now fork from a committed main)
     for (const agent of agentRows) {
@@ -627,8 +629,10 @@ Each tick:
 4. Checks out the agent's branch, writes the same row there, commits with a
    descriptive message that encodes the delta.
 5. Bumps `agents.iteration`.
-6. **When `newIteration >= 10` for all agents, marks the game `completed`** and
-   calls the finish logic inline (see section E2 below).
+6. **When `minIteration >= 10` (all agents have completed 10 iterations), marks
+   the game `completed`** and calls the finish logic inline (see section E2 below).
+   `minIteration = Math.min(...iterations)` — using min ensures every agent is
+   done, not just the fastest one.
 
 **`CALL DOLT_COMMIT` argument format:** The `-m` flag and the message must be
 passed as two separate bound parameters using `"CALL DOLT_COMMIT('-m', ?)"`.
@@ -659,7 +663,7 @@ router.post('/:id/tick', async (req, res) => {
     const [agents] = await pool.execute('SELECT * FROM agents WHERE game_id = ?', [gameId])
 
     const updatedScores = {}
-    let maxIteration = 0
+    const iterations = []
 
     for (const agent of agents) {
       // Latest score from main
@@ -716,12 +720,16 @@ router.post('/:id/tick', async (req, res) => {
         social, planetary, habitable, iteration: newIteration,
       }
 
-      if (newIteration > maxIteration) maxIteration = newIteration
+      iterations.push(newIteration)
     }
 
-    // Auto-finish when all agents have reached iteration 10
+    // Auto-finish only when ALL agents have completed 10 iterations.
+    // Use minIteration (Math.min) — not maxIteration — so we wait for the
+    // slowest agent. Using max would trigger finish as soon as any single
+    // agent hit 10, potentially before others have run all their ticks.
     let completed = false
-    if (maxIteration >= 10) {
+    const minIteration = Math.min(...iterations)
+    if (minIteration >= 10) {
       await finishGame(gameId)
       completed = true
     }
@@ -749,25 +757,31 @@ When a game ends (either via auto-finish from tick or via `POST /api/games/:id/f
 5. Commit the leaderboard insertion to main so the entry is versioned.
 
 ```js
-import { Router } from 'express'
-import { nanoid } from 'nanoid'
-import { pool }   from '../db.js'
+import { Router }     from 'express'
+import { nanoid }     from 'nanoid'
+import { pool, withBranch } from '../db.js'
 
 const router = Router()
 
 /**
  * Shared finish logic — called from tick auto-finish and from the POST route.
  * Exported so tick.js can call it without going through HTTP.
+ *
+ * IMPORTANT: The leaderboard INSERT and its DOLT_ADD/DOLT_COMMIT must run on
+ * the SAME dedicated connection (via withBranch). If the insert uses `pool` and
+ * DOLT_ADD runs on a different connection, the staging area will be empty and
+ * nothing will be committed.
  */
 export async function finishGame(gameId) {
-  // 1. Mark game completed
+  // 1. Mark game completed and fetch game metadata (pool reads are fine here)
   await pool.execute(
     "UPDATE games SET status = 'completed' WHERE id = ?",
     [gameId]
   )
 
   // 2. Find the best in-zone agent for this game
-  const [[game]]  = await pool.execute('SELECT question FROM games WHERE id = ?', [gameId])
+  // username is read from the games row (stored at creation time) — not from persona_id
+  const [[game]]  = await pool.execute('SELECT question, username FROM games WHERE id = ?', [gameId])
   const [[best]]  = await pool.execute(
     `SELECT s.habitable_score, s.social_score, s.planetary_score, a.persona_id
      FROM agent_scores s
@@ -779,59 +793,38 @@ export async function finishGame(gameId) {
   )
 
   if (!best) {
-    // No in-zone agent — still commit the completed status
-    const conn = await import('mysql2/promise').then(m =>
-      m.default.createConnection({
-        host:     process.env.DOLT_HOST     ?? '127.0.0.1',
-        port:     parseInt(process.env.DOLT_PORT ?? '3307'),
-        user:     process.env.DOLT_USER     ?? 'root',
-        password: process.env.DOLT_PASSWORD ?? '',
-        database: process.env.DOLT_DATABASE ?? 'donut_game',
-      })
-    )
-    try {
+    // No in-zone agent — commit the completed status on a dedicated connection
+    await withBranch('main', async (conn) => {
       await conn.execute('CALL DOLT_ADD(?)', ['.'])
       await conn.execute("CALL DOLT_COMMIT('-m', ?)", [`game ${gameId}: completed (no in-zone agent)`])
-    } finally {
-      await conn.end()
-    }
+    })
     return null
   }
 
-  // 3. Get the current HEAD commit hash from dolt_log on main
+  // 3. Get the current HEAD commit hash from dolt_log on main (pool read is fine)
   const [[logRow]] = await pool.execute(
     'SELECT commit_hash FROM dolt_log ORDER BY date DESC LIMIT 1'
   )
   const commitHash = logRow?.commit_hash ?? ''
 
-  // 4. Insert leaderboard row
+  // 4 & 5. Insert leaderboard row AND commit — both on the SAME dedicated connection.
+  // username comes from game.username (set at POST /api/games creation time),
+  // NOT from best.persona_id — those are different concepts.
   const lbId = nanoid()
-  await pool.execute(
-    `INSERT INTO leaderboard
-       (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [lbId, best.persona_id, gameId, best.habitable_score, best.persona_id,
-     game.question, '', commitHash]
-  )
-
-  // 5. Commit the leaderboard entry to main so it is versioned in Dolt history
-  const conn = await import('mysql2/promise').then(m =>
-    m.default.createConnection({
-      host:     process.env.DOLT_HOST     ?? '127.0.0.1',
-      port:     parseInt(process.env.DOLT_PORT ?? '3307'),
-      user:     process.env.DOLT_USER     ?? 'root',
-      password: process.env.DOLT_PASSWORD ?? '',
-      database: process.env.DOLT_DATABASE ?? 'donut_game',
-    })
-  )
-  try {
+  await withBranch('main', async (conn) => {
+    await conn.execute(
+      `INSERT INTO leaderboard
+         (id, username, game_id, best_score, winning_persona, question, dataset, commit_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [lbId, game.username ?? 'anonymous', gameId, best.habitable_score, best.persona_id,
+       game.question, '', commitHash]
+    )
+    // DOLT_ADD and DOLT_COMMIT on the same conn that did the insert — staging sees the row
     await conn.execute('CALL DOLT_ADD(?)', ['.'])
     await conn.execute("CALL DOLT_COMMIT('-m', ?)", [
       `game ${gameId}: completed — winner ${best.persona_id} habitable=${best.habitable_score.toFixed(1)}`
     ])
-  } finally {
-    await conn.end()
-  }
+  })
 
   return { lbId, best, commitHash }
 }
@@ -905,7 +898,7 @@ router.get('/:id/diff', async (req, res) => {
              to_iteration,       from_iteration,
              to_commit_message
            FROM dolt_diff_agent_scores
-           WHERE to_commit_hash = ?`,
+           WHERE to_commit = ?`,
           [toCommit.commit_hash]
         )
         return rows
@@ -999,11 +992,32 @@ export async function fetchDiff(id)      { return get(`/api/games/${id}/diff`) }
 /**
  * fetchRecent — used by RecentResults.jsx
  * Returns: Array<{ id, question, winningPersona, habitableScore, commitHash, diffUrl }>
+ * Server already filters out games with no in-zone agent (no null habitableScore).
+ * Client adds a null guard anyway: habitableScore is coerced to 0 if somehow null.
  */
-export async function fetchRecent()      { return get('/api/recent') }
+export async function fetchRecent() {
+  const entries = await get('/api/recent')
+  return entries.map(entry => ({
+    ...entry,
+    habitableScore: entry.habitableScore ?? 0,
+  }))
+}
 
-export async function createGame({ question, agents }) {
-  return post('/api/games', { question, agents })
+/**
+ * NOTE for RecentResults.jsx:
+ * When rendering habitableScore, guard against null before calling .toFixed():
+ *   habitableScore != null ? habitableScore.toFixed(1) : '—'
+ * The server skips games without a winner, but the client guard prevents crashes
+ * if a stale cached response ever contains a null value.
+ */
+
+/**
+ * createGame — username is optional; defaults to 'anonymous' if not provided.
+ * No UI change needed — PersonaModal.jsx can omit username and the server will
+ * default it. Pass a username string here if the UI ever collects one.
+ */
+export async function createGame({ question, agents, username = 'anonymous' }) {
+  return post('/api/games', { question, agents, username })
 }
 
 /**
@@ -1029,26 +1043,47 @@ setInterval(() => {
 }, 2000)
 
 // AFTER (replace with this pattern):
+import { useRef } from 'react'
 import { tickGame } from '../api/client.js'
 
-// inside useEffect or equivalent:
-const interval = setInterval(async () => {
+// Add these to the hook's existing state declarations:
+const [gameStatus, setGameStatus] = useState(null)
+const intervalRef = useRef(null)
+
+// Inside useEffect (replace the entire interval block):
+intervalRef.current = setInterval(async () => {
   try {
     const result = await tickGame(gameId)
     setAgentScores(result.scores)   // update from server response, not local mutation
-    if (result.completed) {
-      clearInterval(interval)
-      setGameStatus('completed')    // or equivalent state update
+    if (result.completed === true) {
+      clearInterval(intervalRef.current)
+      setGameStatus('completed')
     }
   } catch (err) {
     console.error('tick failed', err)
   }
 }, 2000)
+
+// The useEffect cleanup MUST clear the interval to prevent leaks on unmount:
+return () => { clearInterval(intervalRef.current) }
 ```
 
-The exact variable names (`setAgentScores`, `setGameStatus`, `gameId`) should
-match the existing state variables in `useGame.js`. The key point is: no local
-score mutation — all score state comes from `result.scores`.
+The exact variable names (`setAgentScores`, `gameId`) should match the existing
+state variables in `useGame.js`. The key points are:
+- No local score mutation — all score state comes from `result.scores`.
+- Use `intervalRef.current` (not a local `const interval`) so the cleanup
+  function always references the current interval id.
+- Always return a cleanup function from `useEffect` that calls
+  `clearInterval(intervalRef.current)`.
+- Check `result.completed === true` (strict equality) before clearing.
+
+**Return `gameStatus` from `useGame.js`** alongside the other returned values.
+In `GameView.jsx` (or wherever the status badge is rendered), use:
+```js
+const displayStatus = gameStatus ?? game?.status
+```
+so the badge shows `'completed'` as soon as the tick response arrives, without
+waiting for a separate `fetchGame` round-trip.
 
 ### Import site changes
 
@@ -1220,9 +1255,23 @@ holds the aggregate view.
 
 ### Leaderboard population
 The `leaderboard` table is populated by `finishGame()` which is triggered
-automatically when any agent reaches `iteration >= 10` inside the tick route.
-It can also be triggered manually via `POST /api/games/:id/finish`. Without
-this, `GET /api/leaderboard` would always return an empty array.
+automatically when **all** agents reach `iteration >= 10` (checked via
+`Math.min(...iterations) >= 10`) inside the tick route. It can also be triggered
+manually via `POST /api/games/:id/finish`. Without this, `GET /api/leaderboard`
+would always return an empty array.
+
+The `username` field in `leaderboard` comes from `games.username` (set when
+`POST /api/games` is called), not from the winning `persona_id`. The `games`
+table now has a `username VARCHAR(64) NOT NULL DEFAULT 'anonymous'` column.
+
+### Same-connection rule for DOLT_ADD/DOLT_COMMIT
+`DOLT_ADD` and `DOLT_COMMIT` must always be called on the **same database
+connection** that performed the preceding inserts/updates. Each connection in
+Dolt's SQL server has its own working-set staging area. If you insert rows on
+connection A (e.g. the pool) and then call `DOLT_ADD` on connection B (a
+freshly opened connection), connection B's staging area is empty and nothing
+is committed. The fix: use `withBranch('main', async conn => { /* inserts +
+DOLT_ADD + DOLT_COMMIT all on conn */ })` for every write-then-commit sequence.
 
 ### habitable_score derivation
 `habitable_score = (social_score + planetary_score) / 2`. Stored in the DB
@@ -1256,7 +1305,8 @@ CALL DOLT_CHECKOUT('agent/scientist-01');
 SELECT commit_hash, message, date FROM dolt_log LIMIT 5;
 
 -- See what changed in last commit
-SELECT * FROM dolt_diff_agent_scores WHERE to_commit_hash = (
+-- NOTE: the column is `to_commit`, NOT `to_commit_hash`
+SELECT * FROM dolt_diff_agent_scores WHERE to_commit = (
   SELECT commit_hash FROM dolt_log LIMIT 1
 );
 
