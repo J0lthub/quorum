@@ -3,68 +3,98 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--color-border);
   background: var(--bg-elevated);
 }
 
+.headerDots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
   flex: 1;
-}
-
-.subtitle {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-muted);
 }
 
 .close {
   background: none;
   border: none;
   color: var(--color-muted);
-  font-size: 18px;
+  font-size: 17px;
   cursor: pointer;
   line-height: 1;
-  padding: 0 4px;
+  padding: 0 2px;
   transition: color 0.15s;
 }
 .close:hover { color: var(--color-text); }
 
+/* Body: chart+callout row, then log section */
+.body {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.chartRow {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (max-width: 860px) {
+  .chartRow { grid-template-columns: 1fr; }
+}
+
 .chartWrap {
-  padding: 12px 14px 4px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 10px 12px 6px;
+  border-right: 1px solid var(--color-border);
 }
 
-/* Selected iteration callout */
+/* Callout */
 .callout {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--bg-elevated);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: flex-start;
 }
 
-.calloutHeader {
+.calloutMeta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 6px;
+}
+
+.calloutDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.calloutName {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
 }
 
 .iterBadge {
@@ -72,12 +102,13 @@
   font-size: 9px;
   background: var(--color-amber-dim);
   color: var(--color-amber);
-  padding: 2px 5px;
+  padding: 1px 5px;
   border-radius: 3px;
-  letter-spacing: 0.05em;
 }
 
 .calloutScores {
+  display: flex;
+  gap: 10px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-muted);
@@ -87,38 +118,71 @@
 }
 
 .calloutDecision {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text);
   line-height: 1.55;
-  margin: 0 0 4px;
+  margin: 0;
 }
 
 .calloutReasoning {
+  font-size: 10px;
+  color: var(--color-muted);
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.calloutHint {
   font-size: 11px;
   color: var(--color-muted);
-  line-height: 1.5;
-  margin: 0;
   font-style: italic;
+  margin: 0;
+  padding-top: 4px;
+}
+
+/* Log section */
+.logSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  background: var(--bg-elevated);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 11px;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.tab:hover { color: var(--color-text); }
+.tabActive { color: var(--color-text); }
+
+.tabDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
 }
 
 /* Diff log */
 .diffLog {
   overflow-y: auto;
-  max-height: 320px;
+  max-height: 260px;
   display: flex;
   flex-direction: column;
-}
-
-.diffLogTitle {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  padding: 8px 14px 4px;
-  position: sticky;
-  top: 0;
-  background: var(--bg-surface);
 }
 
 .diffEntry {
@@ -126,40 +190,33 @@
   background: none;
   border: none;
   border-top: 1px solid var(--color-border);
-  padding: 8px 14px;
+  border-left: 3px solid transparent;
+  padding: 6px 12px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.1s;
   width: 100%;
 }
-
-.diffEntry:hover {
-  background: var(--bg-elevated);
-}
-
-.diffActive {
-  background: var(--bg-elevated);
-  border-left: 3px solid var(--color-amber);
-  padding-left: 11px;
-}
+.diffEntry:hover { background: var(--bg-elevated); }
+.diffActive { background: var(--bg-elevated); }
 
 .diffTop {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 
 .diffIter {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--color-muted);
-  min-width: 28px;
+  min-width: 22px;
 }
 
 .diffDeltas {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex: 1;
 }
 
@@ -171,42 +228,31 @@
 
 .delta {
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 2px;
 }
-
-.pos {
-  color: var(--color-green);
-  background: color-mix(in srgb, var(--color-green) 15%, transparent);
-}
-
-.neg {
-  color: #e05c5c;
-  background: color-mix(in srgb, #e05c5c 15%, transparent);
-}
+.pos { color: var(--color-green); background: color-mix(in srgb, var(--color-green) 12%, transparent); }
+.neg { color: #e05c5c; background: color-mix(in srgb, #e05c5c 12%, transparent); }
 
 .diffZone {
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--color-muted);
 }
-
-.inZone {
-  color: var(--color-green);
-}
+.inZone { color: var(--color-green); }
 
 .diffDecision {
   font-size: 11px;
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: 1.45;
   margin: 0;
   opacity: 0.85;
 }
 
 .empty {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-muted);
-  padding: 16px 14px;
+  padding: 12px;
   margin: 0;
 }

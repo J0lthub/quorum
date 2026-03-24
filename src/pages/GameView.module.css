@@ -1,90 +1,74 @@
 .page {
   min-height: 100vh;
-  padding-top: 52px;
+  padding-top: 48px;
 }
 
 .inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 12px 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
 }
 
+/* Compact single-line header */
 .header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: var(--bg-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
+  border-radius: 7px;
+  padding: 9px 14px;
 }
 
+.backLink {
+  font-size: 14px;
+  color: var(--color-amber);
+  text-decoration: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.backLink:hover { opacity: 0.8; }
+
 .question {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text);
-  line-height: 1.45;
+  line-height: 1.35;
   flex: 1;
   min-width: 0;
 }
 
-.headerMeta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
 .statusBadge {
   font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 3px 8px;
+  font-size: 10px;
+  padding: 2px 7px;
   border-radius: 4px;
   letter-spacing: 0.06em;
+  flex-shrink: 0;
 }
-
-.statusBadge.active {
-  background: var(--color-green-dim);
-  color: var(--color-green);
-}
-
-.statusBadge.complete {
-  background: var(--bg-elevated);
-  color: var(--color-muted);
-}
+.statusBadge.active   { background: var(--color-green-dim); color: var(--color-green); }
+.statusBadge.completed { background: var(--bg-elevated); color: var(--color-muted); }
 
 .elapsed {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-muted);
-}
-
-.backLink {
-  font-size: 13px;
-  color: var(--color-amber);
-  text-decoration: none;
   flex-shrink: 0;
 }
 
-.backLink:hover {
-  text-decoration: underline;
-}
-
-.twoCol {
+/* Main two-column grid */
+.mainGrid {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 10px;
   align-items: start;
 }
 
-@media (max-width: 960px) {
-  .twoCol {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 900px) {
+  .mainGrid { grid-template-columns: 1fr; }
 }
 
 .ringCol {
@@ -93,18 +77,10 @@
   gap: 0;
 }
 
-.loading {
+.loading, .notFound {
   text-align: center;
-  padding: 80px 24px;
+  padding: 60px 24px;
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--color-muted);
-}
-
-.notFound {
-  text-align: center;
-  padding: 80px 24px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-muted);
 }
