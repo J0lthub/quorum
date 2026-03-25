@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PERSONAS } from '../api/client.js'
 import { useGame } from '../hooks/useGame'
@@ -6,8 +6,10 @@ import { elapsed } from '../utils/elapsed'
 import TopBar from '../components/layout/TopBar'
 import HabitableZoneRing from '../components/game/HabitableZoneRing'
 import AgentPointLegend from '../components/game/AgentPointLegend'
+import RingLegend from '../components/game/RingLegend'
 import ScorePanel from '../components/game/ScorePanel'
 import AgentHistoryPanel from '../components/game/AgentHistoryPanel'
+import InsightPanel from '../components/game/InsightPanel'
 import styles from './GameView.module.css'
 
 function enrichAgents(agents) {
@@ -20,7 +22,21 @@ function enrichAgents(agents) {
 export default function GameView() {
   const { id: gameId } = useParams()
   const { game, agentScores, bestScore, bestAgentId, isLoading, gameStatus } = useGame(gameId)
-  const [selectedIds, setSelectedIds] = useState([])
+  const [selectedIds, setSelectedIds]     = useState([])
+  const [insightOpen, setInsightOpen]     = useState(false)
+  const [insightShown, setInsightShown]   = useState(false) // only auto-open once
+
+  const displayStatus = gameStatus ?? game?.status
+
+  // Auto-open insight panel when game completes (once per mount)
+  useEffect(() => {
+    if (displayStatus === 'completed' && !insightShown) {
+      setInsightShown(true)
+      // Brief delay so score cards finish rendering first
+      const t = setTimeout(() => setInsightOpen(true), 800)
+      return () => clearTimeout(t)
+    }
+  }, [displayStatus, insightShown])
 
   function handleSelectAgent(agentId) {
     setSelectedIds(prev => {
@@ -50,12 +66,12 @@ export default function GameView() {
     )
   }
 
-  const enriched      = enrichAgents(game.agents)
-  const displayStatus = gameStatus ?? game?.status
+  const enriched       = enrichAgents(game.agents)
   const selectedAgents = enriched.filter(a => selectedIds.includes(a.id))
+  const isCompleted    = displayStatus === 'completed'
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${insightOpen ? styles.insightOpen : ''}`}>
       <TopBar />
       <div className={styles.inner}>
 
@@ -67,6 +83,17 @@ export default function GameView() {
             {displayStatus === 'active' ? 'LIVE' : 'DONE'}
           </span>
           <span className={styles.elapsed}>{elapsed(game.startedAt)}</span>
+
+          {/* Insight button — only when completed */}
+          {isCompleted && (
+            <button
+              className={`${styles.insightBtn} ${insightOpen ? styles.insightBtnActive : ''}`}
+              onClick={() => setInsightOpen(v => !v)}
+              title="Toggle analyst briefing"
+            >
+              {insightOpen ? 'HIDE BRIEFING' : 'ANALYST BRIEFING'}
+            </button>
+          )}
         </div>
 
         {/* Main grid */}
@@ -74,6 +101,7 @@ export default function GameView() {
           <div className={styles.ringCol}>
             <HabitableZoneRing agents={enriched} agentScores={agentScores} bestScore={bestScore} />
             <AgentPointLegend agents={enriched} />
+            <RingLegend />
           </div>
           <ScorePanel
             agents={enriched}
@@ -95,6 +123,14 @@ export default function GameView() {
         )}
 
       </div>
+
+      {/* Insight panel — fixed right, only when completed and open */}
+      {isCompleted && insightOpen && (
+        <InsightPanel
+          gameId={gameId}
+          onClose={() => setInsightOpen(false)}
+        />
+      )}
     </div>
   )
 }

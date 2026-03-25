@@ -3,29 +3,60 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--color-border);
+  z-index: 200;
+  height: 52px;
+  background: var(--earth);
+  border-bottom: 1px solid rgba(244, 244, 240, 0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 52px;
+  padding: 0 2rem;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
 }
 
 .logo {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
-  color: var(--color-amber);
   text-transform: uppercase;
+  color: var(--chalk);
+  text-decoration: none;
 }
 
-.chips {
+.nav {
+  display: flex;
+  gap: 1.75rem;
+}
+
+.navLink {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 240, 0.45);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.navLink:hover {
+  color: rgba(244, 244, 240, 0.75);
+}
+
+.navActive {
+  color: var(--chalk) !important;
+}
+
+.right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 1rem;
 }
 
 .chip {
@@ -33,20 +64,16 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-muted);
-  transition: opacity 0.3s ease;
-}
-
-.chip.loaded {
-  color: var(--color-text);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: rgba(244, 244, 240, 0.4);
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--color-green);
+  background: var(--sage);
   animation: pulse-dot 2s infinite;
 }
 

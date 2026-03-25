@@ -1,0 +1,170 @@
+/* ── Panel shell ─────────────────────────────────────────────────── */
+.panel {
+  position: fixed;
+  top: 52px;
+  right: 0;
+  width: 420px;
+  height: calc(100vh - 52px);
+  background: #161412;
+  border-left: 2px solid rgba(244, 244, 240, 0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 150;
+  font-family: var(--font-mono);
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 44px;
+  flex-shrink: 0;
+  background: #111010;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
+}
+
+.headerLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--sage);
+  flex: 1;
+}
+
+.headerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage);
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.headerMeta {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(244, 244, 240, 0.25);
+}
+
+.close {
+  background: none;
+  border: none;
+  color: rgba(244, 244, 240, 0.35);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 0 4px 8px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.close:hover {
+  color: var(--chalk);
+}
+
+/* ── Divider ──────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: rgba(97, 155, 110, 0.15);
+  flex-shrink: 0;
+}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 244, 240, 0.1) transparent;
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────── */
+.loadingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.loadingBar {
+  height: 11px;
+  width: 100%;
+  background: rgba(244, 244, 240, 0.06);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}
+
+/* ── Narrative text ──────────────────────────────────────────────── */
+.narrative {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.75;
+  color: rgba(244, 244, 240, 0.88);
+  letter-spacing: 0.005em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Blinking cursor while streaming */
+.cursor {
+  display: inline-block;
+  color: var(--sage);
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Error state ─────────────────────────────────────────────────── */
+.errorBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.68rem;
+  color: var(--alert);
+  letter-spacing: 0.02em;
+  padding-top: 4px;
+}
+
+.errorIcon {
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: 1px solid var(--alert);
+  color: var(--alert);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+.footer {
+  padding: 10px 18px;
+  border-top: 1px solid rgba(244, 244, 240, 0.07);
+  flex-shrink: 0;
+}
+
+.footerLabel {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: rgba(244, 244, 240, 0.2);
+}

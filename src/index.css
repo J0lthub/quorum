@@ -1,4 +1,4 @@
-/* === Full CSS reset — must come before all other rules === */
+/* === Reset === */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -6,14 +6,13 @@
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-base);
-  color: var(--color-text);
+  background-color: var(--earth);
+  color: var(--chalk);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Neutralize Vite scaffold #root styles */
 #root {
   width: 100%;
   max-width: 100%;
@@ -23,31 +22,50 @@ body {
   padding: 0;
 }
 
-/* Reset heading sizes so CSS Modules control them */
 h1, h2, h3, h4, h5, h6 {
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
 }
 
+::selection {
+  background-color: var(--sage);
+  color: var(--earth);
+}
+
 /* === Design tokens === */
 :root {
-  --bg-base:       #0d0f0e;
-  --bg-surface:    #141714;
-  --bg-elevated:   #1c201b;
+  /* Brand palette */
+  --sage:  #619b6e;
+  --earth: #2a2624;
+  --chalk: #f4f4f0;
+  --sand:  #e0dcd3;
+  --alert: #d95c50;
 
-  --color-amber:   #c8892a;
-  --color-amber-dim: #7a5118;
-  --color-green:   #4caf6e;
-  --color-green-dim: #2a5e3c;
-  --color-text:    #e8e4dc;
-  --color-muted:   #6b7068;
-  --color-border:  #2a2e29;
+  /* Semantic aliases (used across components) */
+  --bg-base:       var(--earth);
+  --bg-surface:    rgba(244, 244, 240, 0.03);
+  --bg-elevated:   rgba(244, 244, 240, 0.07);
 
-  --font-mono: "JetBrains Mono", "Fira Mono", ui-monospace, monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --color-text:    var(--chalk);
+  --color-muted:   rgba(244, 244, 240, 0.5);
+  --color-border:  rgba(244, 244, 240, 0.15);
+  --color-border-strong: rgba(244, 244, 240, 0.3);
 
-  --ring-outer-stroke: var(--color-amber);
-  --ring-inner-stroke: var(--color-green);
-  --ring-fill:         rgba(76, 175, 110, 0.20);
+  --color-amber:     var(--sage);
+  --color-amber-dim: rgba(97, 155, 110, 0.25);
+  --color-green:     var(--sage);
+  --color-green-dim: rgba(97, 155, 110, 0.2);
+
+  --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+
+  /* Ring diagram */
+  --ring-outer-stroke: var(--sand);
+  --ring-inner-stroke: var(--sage);
+  --ring-fill:         rgba(97, 155, 110, 0.15);
+
+  --border-thin:  1px solid var(--earth);
+  --border-light: 1px solid rgba(244, 244, 240, 0.15);
 }

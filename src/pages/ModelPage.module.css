@@ -1,0 +1,367 @@
+.page {
+  min-height: 100vh;
+}
+
+/* ── Hero ──────────────────────────────────────────────── */
+.hero {
+  border-bottom: 2px solid var(--color-border-strong);
+  padding: 100px 2.5rem 72px;
+}
+
+.heroInner {
+  max-width: 720px;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+}
+
+.headline {
+  font-family: var(--font-sans);
+  font-size: clamp(2.5rem, 5vw, 4.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--chalk);
+  margin-bottom: 28px;
+}
+
+.lede {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--color-muted);
+  max-width: 580px;
+  margin-bottom: 18px;
+  font-weight: 500;
+}
+
+.lede:last-child { margin-bottom: 0; }
+
+/* ── Diagram ───────────────────────────────────────────── */
+.diagramSection {
+  border-bottom: 2px solid var(--color-border-strong);
+  padding: 72px 2.5rem;
+}
+
+.diagramInner {
+  max-width: 820px;
+}
+
+/* ── Two rings ─────────────────────────────────────────── */
+.ringsSection {
+  border-bottom: 2px solid var(--color-border-strong);
+  padding: 56px 2.5rem;
+}
+
+.ringsInner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.ring {
+  border-radius: 0;
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-border-strong);
+  padding: 28px;
+}
+
+.ringHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ringDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+  background: var(--color-text);
+}
+
+.ringTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ringSubtitle {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.ringBody {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.dimensionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.dimension {
+  background: rgba(244, 244, 240, 0.05);
+  padding: 8px 10px;
+}
+
+.dimensionLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+
+.dimensionDesc {
+  font-size: 10px;
+  color: var(--color-muted);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* ── Why section ───────────────────────────────────────── */
+.whySection {
+  border-bottom: 2px solid var(--color-border-strong);
+  padding: 72px 2.5rem;
+}
+
+.whyInner {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 64px;
+  align-items: start;
+}
+
+.sectionEyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: 14px;
+}
+
+.sectionHeadline {
+  font-family: var(--font-sans);
+  font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--chalk);
+  margin-bottom: 28px;
+}
+
+.bodyText {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--color-muted);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.bodyText:last-child { margin-bottom: 0; }
+
+.bodyText em {
+  color: var(--color-text);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.bodyText strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.whyQuote {
+  position: sticky;
+  top: 80px;
+  padding: 24px;
+  border-left: 2px solid var(--color-border-strong);
+}
+
+.quote {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--chalk);
+  margin-bottom: 14px;
+}
+
+.quoteAttrib {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-style: normal;
+}
+
+/* ── Scoring section ───────────────────────────────────── */
+.scoringSection {
+  border-bottom: 2px solid var(--color-border-strong);
+  padding: 72px 2.5rem;
+  background: rgba(244, 244, 240, 0.03);
+}
+
+.scoringInner {
+  max-width: 900px;
+}
+
+.scoreTiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.tier {
+  border: 1px solid;
+  padding: 20px;
+}
+
+.tierRange {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.tierLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text);
+  margin-bottom: 10px;
+}
+
+.tierDesc {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.formula {
+  background: rgba(244, 244, 240, 0.05);
+  border: 1px solid var(--color-border);
+  padding: 28px;
+}
+
+.formulaLabel {
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+
+.formulaCode {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-text);
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+.formulaNote {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* ── CTA ───────────────────────────────────────────────── */
+.ctaSection {
+  padding: 56px 2.5rem;
+}
+
+.ctaInner {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.ctaText {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--chalk);
+}
+
+.ctaLink {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border-strong);
+  padding-bottom: 2px;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+
+.ctaLink:hover { border-color: var(--color-text); }
+
+.ctaLinkSecondary {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 2px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ctaLinkSecondary:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero, .diagramSection, .ringsSection, .whySection,
+  .scoringSection, .ctaSection { padding-left: 1.5rem; padding-right: 1.5rem; }
+
+  .ringsInner, .whyInner { grid-template-columns: 1fr; }
+
+  .whyQuote { position: static; }
+
+  .ctaInner { flex-direction: column; align-items: flex-start; gap: 16px; }
+}

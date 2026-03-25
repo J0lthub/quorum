@@ -11,7 +11,8 @@
     "test": "vitest run",
     "server": "nodemon server/index.js",
     "dolt": "dolt sql-server --host=127.0.0.1 --port=3307 --max-connections=50 --data-dir=${DOLT_DATA_DIR:-./quorum-db}",
-    "dev:full": "concurrently --names 'vite,express,dolt' --prefix-colors 'cyan,green,yellow' 'npm run dev' 'npm run server' 'npm run dolt'"
+    "dev:full": "concurrently --names 'vite,express,dolt' --prefix-colors 'cyan,green,yellow' 'npm run dev' 'npm run server' 'npm run dolt'",
+    "share": "concurrently --names 'express,dolt' --prefix-colors 'green,yellow' 'npm run server' 'npm run dolt'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

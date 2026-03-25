@@ -1,34 +1,179 @@
-.page {
-  min-height: 100vh;
-  padding-top: 52px; /* topbar height */
+/* ── Two-panel layout ──────────────────────────────────── */
+.layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
 }
 
-.inner {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 24px 48px;
+/* ── Left panel — sage ─────────────────────────────────── */
+.panelLeft {
+  width: 35vw;
+  min-width: 260px;
+  max-width: 480px;
+  background: var(--sage);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+  border-right: 2px solid var(--earth);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.headerMeta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--earth);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  opacity: 0.8;
+}
+
+.sideNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 3rem;
+}
+
+.navLink {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(42, 38, 36, 0.55);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.navLink:hover,
+.navActive {
+  color: var(--earth) !important;
+}
+
+.heroType {
+  margin-top: auto;
+}
+
+.dotQ {
+  width: 60px;
+  height: auto;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.brand {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 2.2rem;
+  letter-spacing: -0.03em;
+  color: var(--earth);
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.brandSub {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(42, 38, 36, 0.6);
+}
+
+/* ── Right panel — earth ───────────────────────────────── */
+.panelRight {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  overflow-y: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.dashHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.15);
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
+.dashTitle {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 2.2rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--chalk);
+}
+
+.dashStats {
+  display: flex;
+  gap: 2rem;
+  font-family: var(--font-mono);
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sage);
+  font-weight: 700;
+}
+
+.statValue {
+  font-size: 1.1rem;
+  color: var(--chalk);
+  font-weight: 400;
+}
+
+/* ── Main content grid ─────────────────────────────────── */
+.vizContainer {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  grid-template-rows: auto auto auto;
-  grid-template-areas:
-    "question sidebar"
-    "games    sidebar"
-    "recent   sidebar";
-  gap: 20px;
+  grid-template-columns: 1fr 260px;
+  gap: 2.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.gamesSection {}
+.recentSection {}
+
+.sideCol {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 @media (max-width: 1100px) {
-  .inner {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "question"
-      "games"
-      "recent"
-      "sidebar";
-  }
+  .panelLeft { display: none; }
+  .panelRight { width: 100%; }
+  .vizContainer { grid-template-columns: 1fr; }
+  .sideCol { display: none; }
 }
-
-.questionArea { grid-area: question; }
-.gamesArea    { grid-area: games; }
-.recentArea   { grid-area: recent; }
-.sidebarArea  { grid-area: sidebar; }

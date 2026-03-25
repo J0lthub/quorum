@@ -1,0 +1,233 @@
+.page {
+  min-height: 100vh;
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.hero {
+  padding: 100px 2.5rem 72px;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.1);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 24px;
+}
+
+.headline {
+  font-family: var(--font-sans);
+  font-size: clamp(2.6rem, 5.5vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  color: var(--chalk);
+  margin-bottom: 24px;
+}
+
+.lede {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: rgba(244, 244, 240, 0.55);
+}
+
+/* ── Section shell ───────────────────────────────────────────── */
+.section {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 32px;
+  padding: 56px 2.5rem;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
+}
+
+/* ── Color variants ──────────────────────────────────────────── */
+.sage {
+  background: var(--sage);
+  border-bottom-color: rgba(42, 38, 36, 0.2);
+}
+
+.elevated {
+  background: rgba(244, 244, 240, 0.04);
+}
+
+.chalk {
+  background: var(--sand);
+  border-bottom-color: rgba(42, 38, 36, 0.15);
+}
+
+.dark {
+  background: var(--earth);
+}
+
+/* ── Section number ──────────────────────────────────────────── */
+.num {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(244, 244, 240, 0.2);
+  padding-top: 6px;
+}
+
+.numDark {
+  color: rgba(42, 38, 36, 0.3);
+}
+
+/* ── Section content ─────────────────────────────────────────── */
+.sectionBody {
+  max-width: 680px;
+}
+
+.heading {
+  font-family: var(--font-sans);
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--chalk);
+  margin-bottom: 20px;
+}
+
+.headingDark {
+  color: var(--earth);
+}
+
+.text {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: rgba(42, 38, 36, 0.72);
+  margin-bottom: 14px;
+}
+
+/* On dark bg, text should be chalk */
+.elevated .text,
+.dark .text {
+  color: rgba(244, 244, 240, 0.65);
+}
+
+.text:last-child { margin-bottom: 0; }
+
+.textDark {
+  color: rgba(42, 38, 36, 0.72);
+}
+
+/* Sage sections: dark text */
+.sage .heading  { color: var(--earth); }
+.sage .text     { color: rgba(42, 38, 36, 0.72); }
+.sage .num      { color: rgba(42, 38, 36, 0.25); }
+
+/* ── Thesis box ──────────────────────────────────────────────── */
+.thesisBox {
+  margin-top: 28px;
+  padding: 22px 26px;
+  border-left: 3px solid var(--earth);
+  background: rgba(42, 38, 36, 0.08);
+  font-family: var(--font-sans);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--earth);
+  letter-spacing: -0.01em;
+}
+
+/* ── Tech row ────────────────────────────────────────────────── */
+.techRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 32px;
+  border: 1px solid rgba(244, 244, 240, 0.12);
+}
+
+.techItem {
+  padding: 18px 20px;
+  border-right: 1px solid rgba(244, 244, 240, 0.12);
+}
+
+.techItem:last-child { border-right: none; }
+
+.techLabel {
+  font-family: var(--font-mono);
+  font-size: 0.57rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--sage);
+  margin-bottom: 6px;
+}
+
+.techValue {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(244, 244, 240, 0.55);
+}
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 40px 2.5rem;
+}
+
+.ctaText {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--chalk);
+  flex: 0 0 auto;
+}
+
+.ctaLink {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chalk);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.4);
+  padding-bottom: 2px;
+  transition: border-color 0.15s;
+}
+.ctaLink:hover { border-color: var(--chalk); }
+
+.ctaLinkDark {
+  color: var(--earth);
+  border-bottom-color: rgba(42, 38, 36, 0.4);
+}
+.ctaLinkDark:hover { border-color: var(--earth); }
+
+.ctaLinkSec {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 240, 0.4);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.2);
+  padding-bottom: 2px;
+  transition: color 0.15s;
+}
+.ctaLinkSec:hover { color: var(--chalk); }
+
+.ctaLinkSecDark {
+  color: rgba(42, 38, 36, 0.45);
+  border-bottom-color: rgba(42, 38, 36, 0.2);
+}
+.ctaLinkSecDark:hover { color: var(--earth); }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .hero, .cta { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .section { grid-template-columns: 1fr; gap: 8px; padding: 40px 1.5rem; }
+  .num { display: none; }
+  .techRow { grid-template-columns: 1fr; }
+  .techItem { border-right: none; border-bottom: 1px solid rgba(244, 244, 240, 0.12); }
+  .techItem:last-child { border-bottom: none; }
+  .cta { flex-direction: column; align-items: flex-start; gap: 14px; }
+}
