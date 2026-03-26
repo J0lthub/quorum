@@ -83,47 +83,31 @@ Without Dolt's branching, agents cannot experiment in parallel without corruptin
 
 ## Getting Started
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 18+
-- [Dolt](https://docs.dolthub.com/introduction/installation) — `brew install dolt` on macOS
-- An [Anthropic API key](https://console.anthropic.com/)
-
-### Install
+### One-line setup
 
 ```bash
-git clone https://github.com/J0lthub/quorum.git
-cd quorum
-npm install
+git clone https://github.com/J0lthub/quorum.git && cd quorum && ./setup.sh
 ```
 
-### Configure
+The setup script will:
+- Check Node.js 18+ is installed
+- Install Dolt automatically if missing (via Homebrew on macOS, or the official install script on Linux)
+- Run `npm install`
+- Create a `.env` file for your API key
+- Initialise the Dolt database and seed it with datasets
 
-Create a `.env` file in the project root:
+After setup, add your Anthropic API key to `.env`:
 
 ```env
 ANTHROPIC_API_KEY=your_key_here
-DOLT_DATA_DIR=./quorum-db
 ```
 
-### Initialise the Database
-
-```bash
-mkdir -p quorum-db
-cd quorum-db
-dolt init
-dolt sql < ../scripts/schema.sql
-cd ..
-```
+Get a key at [console.anthropic.com](https://console.anthropic.com).
 
 ### Run
 
 ```bash
-# Development (Vite + Express + Dolt, all in one)
 npm run dev:full
-
-# Production (Express + Dolt only — serves the pre-built dist/)
-npm run share
 ```
 
 | Service | Port |
