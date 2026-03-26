@@ -45,7 +45,7 @@ export default function Dashboard() {
             The Model
           </NavLink>
           <NavLink to="/about" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navActive : ''}`}>
-            Why
+            About
           </NavLink>
         </nav>
 
