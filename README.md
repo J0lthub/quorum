@@ -2,12 +2,12 @@
 
 **Multi-Agent Deliberation Platform**
 
-![Quorum Demo](public/media/demo.gif)
-
 <p align="center">
   <img src="public/media/dashboard.png" alt="Dashboard" width="49%" />
   <img src="public/media/council.png" alt="The Council" width="49%" />
 </p>
+
+![Quorum Demo](public/media/demo.gif)
 
 Quorum is a deliberation engine. Not a chatbot. Not a dashboard. A deliberation engine.
 
