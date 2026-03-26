@@ -36,23 +36,23 @@ CREATE TABLE IF NOT EXISTS datasets (
 
 run_sql "
 CREATE TABLE IF NOT EXISTS games (
-  id          VARCHAR(36)   NOT NULL PRIMARY KEY,
   question    TEXT          NOT NULL,
   status      VARCHAR(16)   NOT NULL DEFAULT 'active',
   username    VARCHAR(64)   NOT NULL DEFAULT 'anonymous',
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   dataset     VARCHAR(128)  NOT NULL DEFAULT '',
-  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id          VARCHAR(36)   NOT NULL PRIMARY KEY
 );
 "
 
 run_sql "
 CREATE TABLE IF NOT EXISTS agents (
-  id          VARCHAR(36)   NOT NULL PRIMARY KEY,
-  game_id     VARCHAR(36)   NOT NULL,
   persona_id  VARCHAR(64)   NOT NULL,
-  branch_name VARCHAR(128)  NOT NULL,
   iteration   INT           NOT NULL DEFAULT 0,
   created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+  game_id     VARCHAR(36)   NOT NULL,
+  branch_name VARCHAR(128)  NOT NULL,
   FOREIGN KEY (game_id) REFERENCES games(id)
 );
 "
@@ -60,17 +60,17 @@ CREATE TABLE IF NOT EXISTS agents (
 run_sql "
 CREATE TABLE IF NOT EXISTS agent_scores (
   id               VARCHAR(36) NOT NULL PRIMARY KEY,
-  agent_id         VARCHAR(36) NOT NULL,
-  game_id          VARCHAR(36) NOT NULL,
   iteration        INT         NOT NULL,
+  decision         TEXT,
   social_score     DOUBLE      NOT NULL,
   planetary_score  DOUBLE      NOT NULL,
   habitable_score  DOUBLE      NOT NULL,
   is_in_zone       TINYINT(1)  NOT NULL DEFAULT 0,
-  commit_message   TEXT,
-  decision         TEXT,
   reasoning        TEXT,
   committed_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  commit_message   TEXT,
+  agent_id         VARCHAR(36) NOT NULL,
+  game_id          VARCHAR(36) NOT NULL,
   FOREIGN KEY (agent_id) REFERENCES agents(id),
   FOREIGN KEY (game_id)  REFERENCES games(id)
 );
@@ -78,15 +78,15 @@ CREATE TABLE IF NOT EXISTS agent_scores (
 
 run_sql "
 CREATE TABLE IF NOT EXISTS leaderboard (
-  id              VARCHAR(36)  NOT NULL PRIMARY KEY,
-  username        VARCHAR(64)  NOT NULL,
-  game_id         VARCHAR(36)  NOT NULL,
-  best_score      DOUBLE       NOT NULL,
-  winning_persona VARCHAR(64)  NOT NULL,
   question        TEXT         NOT NULL,
+  winning_persona VARCHAR(64)  NOT NULL,
+  best_score      DOUBLE       NOT NULL,
+  username        VARCHAR(64)  NOT NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   dataset         VARCHAR(128) NOT NULL DEFAULT '',
   commit_hash     VARCHAR(40)  NOT NULL DEFAULT '',
-  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+  game_id         VARCHAR(36)  NOT NULL
 );
 "
 
