@@ -1,6 +1,4 @@
-Security & Auditability in Quorum
-
-The Problem No One Is Solving
+Quorum as an example of Security & Auditability of AI.
 
 AI agents are making decisions at scale. In most systems today, you cannot answer any of the following questions:
 
