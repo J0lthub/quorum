@@ -2,6 +2,13 @@
 
 **Multi-Agent Deliberation Platform**
 
+![Quorum Demo](public/media/demo.gif)
+
+<p align="center">
+  <img src="public/media/dashboard.png" alt="Dashboard" width="49%" />
+  <img src="public/media/council.png" alt="The Council" width="49%" />
+</p>
+
 Quorum is a deliberation engine. Not a chatbot. Not a dashboard. A deliberation engine.
 
 A human poses a real-world question. A council of AI expert personas — each carrying a distinct value system — reasons through it independently over 10 iterations, scoring every proposal against the [Doughnut Economics](https://doughnuteconomics.org/) framework. Every step is committed to a Dolt branch. The convergence is auditable. The tradeoffs are visible.
